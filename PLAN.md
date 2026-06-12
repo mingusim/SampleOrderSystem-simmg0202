@@ -69,7 +69,7 @@
 → **사용자 리뷰 후 커밋**
 
 **[REFACTOR]**
-- [ ] refactor agent 실행
+- [x] refactor agent 실행
 
 → **사용자 리뷰 후 커밋**
 

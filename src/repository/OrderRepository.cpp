@@ -3,6 +3,7 @@
 #include <fstream>
 #include <filesystem>
 #include <algorithm>
+#include <stdexcept>
 
 using json = nlohmann::json;
 
@@ -66,6 +67,8 @@ void OrderRepository::persist(const std::vector<Order>& orders) const {
     std::filesystem::create_directories(
         std::filesystem::path(filePath_).parent_path());
     std::ofstream f(filePath_);
+    if (!f.is_open())
+        throw std::runtime_error("Failed to open file for writing: " + filePath_);
     f << json(orders).dump(2);
 }
 
@@ -79,6 +82,22 @@ std::optional<Order> OrderRepository::findById(const std::string& id) {
 
 std::vector<Order> OrderRepository::findAll() {
     return load();
+}
+
+std::vector<Order> OrderRepository::findByStatus(OrderStatus status) {
+    auto orders = load();
+    std::vector<Order> result;
+    std::copy_if(orders.begin(), orders.end(), std::back_inserter(result),
+        [&](const Order& o) { return o.status == status; });
+    return result;
+}
+
+std::vector<Order> OrderRepository::findBySampleId(const std::string& sampleId) {
+    auto orders = load();
+    std::vector<Order> result;
+    std::copy_if(orders.begin(), orders.end(), std::back_inserter(result),
+        [&](const Order& o) { return o.sampleId == sampleId; });
+    return result;
 }
 
 void OrderRepository::save(const Order& order) {

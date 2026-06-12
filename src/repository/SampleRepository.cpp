@@ -3,6 +3,7 @@
 #include <fstream>
 #include <filesystem>
 #include <algorithm>
+#include <stdexcept>
 
 using json = nlohmann::json;
 
@@ -41,6 +42,8 @@ void SampleRepository::persist(const std::vector<Sample>& samples) const {
     std::filesystem::create_directories(
         std::filesystem::path(filePath_).parent_path());
     std::ofstream f(filePath_);
+    if (!f.is_open())
+        throw std::runtime_error("Failed to open file for writing: " + filePath_);
     f << json(samples).dump(2);
 }
 
@@ -54,6 +57,16 @@ std::optional<Sample> SampleRepository::findById(const std::string& id) {
 
 std::vector<Sample> SampleRepository::findAll() {
     return load();
+}
+
+std::vector<Sample> SampleRepository::findByName(const std::string& partialName) {
+    auto samples = load();
+    std::vector<Sample> result;
+    std::copy_if(samples.begin(), samples.end(), std::back_inserter(result),
+        [&](const Sample& s) {
+            return s.name.find(partialName) != std::string::npos;
+        });
+    return result;
 }
 
 void SampleRepository::save(const Sample& sample) {
