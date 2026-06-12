@@ -161,11 +161,11 @@
 → **사용자 리뷰 후 커밋**
 
 **[GREEN]**
-- [ ] `OrderController::getOrderStats()` 구현
-- [ ] `OrderController::getActiveOrders()` 구현
-- [ ] `SampleController::getStockStatus()` 구현
-- [ ] `MainView` — 모니터링 서브메뉴 UI
-- [ ] 테스트 통과 확인
+- [x] `OrderController::getOrderStats()` 구현
+- [x] `OrderController::getActiveOrders()` 구현
+- [x] `SampleController::getStockStatus()` 구현
+- [x] `MainView` — 모니터링 서브메뉴 UI (상태별 주문 건수 / 시료별 재고 현황)
+- [x] 테스트 통과 확인
 
 → **사용자 리뷰 후 커밋**
 
@@ -178,21 +178,48 @@
 
 ## Phase 7. 생산라인 (FR-040~042)
 
+### 설계 결정
+
+- `updateProduction(const std::string& now)` — 테스트 시 시간 주입을 위해 현재 시각을 파라미터로 받음
+  - View는 `currentTimestamp()` 결과를 전달
+  - 테스트는 고정된 타임스탬프 전달 → 결정적(deterministic) 검증 가능
+- `getCurrentProduction()` — PRODUCING 주문 중 가장 먼저 시작된 1건 반환 (FIFO)
+- `getProductionQueue()` — 모든 PRODUCING 주문 목록 (생산 시작 시각 오름차순)
+- 새 반환 타입 `ProductionInfo` 구조체 (`model/Order.h`에 추가)
+
+### 신규 타입
+
+```cpp
+struct ProductionInfo {
+    Order  order;
+    Sample sample;
+    double totalProductionHours;  // avgProductionTime × targetProductionQuantity
+};
+```
+
 **[RED]**
-- [ ] 생산라인 단위 테스트 작성
-  - FR-042: 경과 시간 기반 delta 계산 (정상 / 실 생산량 초과 방지)
-  - FR-042: 총 생산시간 경과 시 PRODUCING → CONFIRMED 자동 전환
-  - FR-042: delta > 0일 때 stock 갱신, producedQuantity 갱신 확인
-- [ ] 빌드·실행 → 테스트 실패 확인
+- [ ] `model/Order.h` — `ProductionInfo` 구조체 추가
+- [ ] `OrderController` 신규 메서드 선언
+  - `void updateProduction(const std::string& now)`
+  - `std::optional<ProductionInfo> getCurrentProduction()`
+  - `std::vector<ProductionInfo> getProductionQueue()`
+- [ ] `OrderControllerTest` 생산라인 테스트 추가 (7개)
+  - FR-042: 경과 시간 < 1단위 → delta=0, save 없음
+  - FR-042: 경과 시간 = 2.5h, avgTime=1.0h → delta=2, stock+=2, producedQty+=2
+  - FR-042: delta가 targetQty 초과 → targetQty로 클램프
+  - FR-042: 총 생산시간 경과 → PRODUCING → CONFIRMED 전환
+  - FR-040: PRODUCING 주문 있음 → getCurrentProduction 반환
+  - FR-040: PRODUCING 주문 없음 → nullopt 반환
+  - FR-041: PRODUCING 주문 여러 개 → getProductionQueue 전체 반환
+- [ ] 빌드·실행 → 테스트 실패(링커 에러) 확인
 
 → **사용자 리뷰 후 커밋**
 
 **[GREEN]**
-- [ ] 생산 대기 큐 (FIFO) 구현
-- [ ] FR-040: 현재 생산 중인 시료 정보 표시
-- [ ] FR-041: 생산 대기 큐 목록 표시
-- [ ] FR-042: 메뉴 진입 시 경과 시간 체크 및 상태 자동 갱신
-- [ ] `MainView` — 생산라인 서브메뉴 UI
+- [ ] `OrderController::updateProduction()` 구현 (elapsed 계산, delta 적용, CONFIRMED 전환)
+- [ ] `OrderController::getCurrentProduction()` 구현
+- [ ] `OrderController::getProductionQueue()` 구현
+- [ ] `MainView` — 생산라인 서브메뉴 UI (현재 생산 / 대기 큐 / 상태 갱신)
 - [ ] 테스트 통과 확인
 
 → **사용자 리뷰 후 커밋**
