@@ -29,8 +29,9 @@ void MainView::run() {
     while (true) {
         showMainMenu();
         switch (readMenuChoice()) {
-            case 1: handleSampleMenu(); break;
-            case 2: handleOrderMenu();  break;
+            case 1: handleSampleMenu();   break;
+            case 2: handleOrderMenu();    break;
+            case 3: handleMonitorMenu();  break;
             case 0: return;
             default: std::cout << "잘못된 입력입니다.\n";
         }
@@ -41,6 +42,7 @@ void MainView::showMainMenu() {
     std::cout << "\n========== 시료 생산주문관리 시스템 ==========\n";
     std::cout << "  1. 시료 관리\n";
     std::cout << "  2. 주문 관리\n";
+    std::cout << "  3. 모니터링\n";
     std::cout << "  0. 종료\n";
     std::cout << "선택: ";
 }
@@ -153,6 +155,42 @@ void MainView::handleOrderMenu() {
     }
 }
 
+static std::string stockStatusLabel(StockStatus s) {
+    switch (s) {
+        case StockStatus::SURPLUS:   return "여유";
+        case StockStatus::SHORTAGE:  return "부족";
+        case StockStatus::DEPLETED:  return "고갈";
+        default:                     return "?";
+    }
+}
+
+void MainView::handleMonitorMenu() {
+    while (true) {
+        std::cout << "\n----- 모니터링 -----\n";
+        std::cout << "  1. 상태별 주문 건수\n";
+        std::cout << "  2. 시료별 재고 현황\n";
+        std::cout << "  0. 뒤로\n";
+        std::cout << "선택: ";
+        const int choice = readMenuChoice();
+        switch (choice) {
+            case 0: return;
+            case 1: {
+                const OrderStats stats = orderCtrl_.getOrderStats();
+                std::cout << "\n----- 상태별 주문 건수 -----\n";
+                std::cout << "  접수대기(RESERVED) : " << stats.reserved  << "건\n";
+                std::cout << "  생산중  (PRODUCING): " << stats.producing << "건\n";
+                std::cout << "  승인완료(CONFIRMED): " << stats.confirmed << "건\n";
+                std::cout << "  출고완료(RELEASE)  : " << stats.release   << "건\n";
+                break;
+            }
+            case 2:
+                printStockStatusList(sampleCtrl_.getStockStatus(orderCtrl_.getActiveOrders()));
+                break;
+            default: std::cout << "잘못된 입력입니다.\n"; break;
+        }
+    }
+}
+
 void MainView::printSampleList(const std::vector<Sample>& samples) {
     if (samples.empty()) {
         std::cout << "등록된 시료가 없습니다.\n";
@@ -172,6 +210,23 @@ void MainView::printSampleList(const std::vector<Sample>& samples) {
                   << std::setw(14) << s.avgProductionTime
                   << std::setw(8)  << s.yield
                   << std::setw(8)  << s.stock << "\n";
+    }
+}
+
+void MainView::printStockStatusList(const std::vector<SampleStockInfo>& infos) {
+    if (infos.empty()) { std::cout << "등록된 시료가 없습니다.\n"; return; }
+    std::cout << "\n"
+              << std::left
+              << std::setw(10) << "ID"
+              << std::setw(16) << "이름"
+              << std::setw(8)  << "재고"
+              << std::setw(8)  << "상태" << "\n";
+    std::cout << std::string(42, '-') << "\n";
+    for (const auto& info : infos) {
+        std::cout << std::setw(10) << info.sample.id
+                  << std::setw(16) << info.sample.name
+                  << std::setw(8)  << info.sample.stock
+                  << std::setw(8)  << stockStatusLabel(info.stockStatus) << "\n";
     }
 }
 

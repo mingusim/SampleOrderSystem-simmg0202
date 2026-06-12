@@ -108,3 +108,26 @@ bool OrderController::rejectOrder(const std::string& orderId) {
     orderRepo_.save(order);
     return true;
 }
+
+OrderStats OrderController::getOrderStats() {
+    OrderStats stats;
+    for (const auto& o : orderRepo_.findAll()) {
+        switch (o.status) {
+            case OrderStatus::RESERVED:  stats.reserved++;  break;
+            case OrderStatus::PRODUCING: stats.producing++; break;
+            case OrderStatus::CONFIRMED: stats.confirmed++; break;
+            case OrderStatus::RELEASE:   stats.release++;   break;
+            default: break;
+        }
+    }
+    return stats;
+}
+
+std::vector<Order> OrderController::getActiveOrders() {
+    std::vector<Order> result;
+    for (const auto& o : orderRepo_.findAll()) {
+        if (o.status == OrderStatus::CONFIRMED || o.status == OrderStatus::PRODUCING)
+            result.push_back(o);
+    }
+    return result;
+}

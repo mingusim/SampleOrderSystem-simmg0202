@@ -16,6 +16,8 @@ private:
     void handleSampleMenu();
     void handleSearchMenu();
     void handleOrderMenu();
+    void handleMonitorMenu();
     void printSampleList(const std::vector<Sample>& samples);
     void printOrderList(const std::vector<Order>& orders);
+    void printStockStatusList(const std::vector<SampleStockInfo>& infos);
 };

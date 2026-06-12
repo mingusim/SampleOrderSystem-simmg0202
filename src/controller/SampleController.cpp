@@ -22,3 +22,22 @@ std::vector<Sample> SampleController::getAllSamples() {
 std::vector<Sample> SampleController::searchByName(const std::string& partialName) {
     return repo_.findByName(partialName);
 }
+
+std::vector<SampleStockInfo> SampleController::getStockStatus(const std::vector<Order>& activeOrders) {
+    std::vector<SampleStockInfo> result;
+    for (const auto& sample : repo_.findAll()) {
+        int activeQty = 0;
+        for (const auto& o : activeOrders) {
+            if (o.sampleId == sample.id) activeQty += o.quantity;
+        }
+        StockStatus status;
+        if (sample.stock == 0)
+            status = StockStatus::DEPLETED;
+        else if (sample.stock < activeQty)
+            status = StockStatus::SHORTAGE;
+        else
+            status = StockStatus::SURPLUS;
+        result.push_back({sample, status});
+    }
+    return result;
+}
