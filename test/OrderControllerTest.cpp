@@ -335,20 +335,35 @@ TEST_F(OrderControllerTest, GetCurrentProduction_NoProducing_ReturnsNullopt) {
 }
 
 // FR-041: PRODUCING 주문 여러 개 → 전체 반환
-TEST_F(OrderControllerTest, GetProductionQueue_MultipleProducing_ReturnsAll) {
+// FR-041: PRODUCING 2개 → front 제외, 대기 중인 1개만 반환
+TEST_F(OrderControllerTest, GetProductionQueue_MultipleProducing_ExcludesFront) {
     Order o1 = DummyDataGenerator::makeOrder(
         "O-001", "S-001", "고객A", 5, OrderStatus::PRODUCING,
-        "2026-01-01 10:00:00", "2026-01-01 10:00:00", 0, 10);
+        "2026-01-01 10:00:00", "2026-01-01 08:00:00", 0, 10);  // front (earlier startedAt)
     Order o2 = DummyDataGenerator::makeOrder(
         "O-002", "S-001", "고객B", 3, OrderStatus::PRODUCING,
-        "2026-01-01 10:00:00", "2026-01-01 11:00:00", 0, 8);
+        "2026-01-01 10:00:00", "2026-01-01 09:00:00", 0, 8);   // queue
     Sample sample = DummyDataGenerator::makeSample("S-001", "시료", 1.0, 0.9, 0);
     EXPECT_CALL(mockOrderRepo_, findByStatus(OrderStatus::PRODUCING))
         .WillOnce(Return(std::vector<Order>{o1, o2}));
     EXPECT_CALL(mockSampleRepo_, findById("S-001"))
         .WillRepeatedly(Return(std::optional<Sample>{sample}));
     const auto result = controller_.getProductionQueue();
-    EXPECT_EQ(2u, result.size());
+    ASSERT_EQ(1u, result.size());
+    EXPECT_EQ("O-002", result[0].order.id);  // O-001(front) 제외
+}
+
+// FR-041: PRODUCING 1개(=현재 생산 중) → 대기 큐 없음
+TEST_F(OrderControllerTest, GetProductionQueue_SingleProducing_ReturnsEmpty) {
+    Order o1 = DummyDataGenerator::makeOrder(
+        "O-001", "S-001", "고객A", 5, OrderStatus::PRODUCING,
+        "2026-01-01 10:00:00", "2026-01-01 08:00:00", 0, 10);
+    Sample sample = DummyDataGenerator::makeSample("S-001", "시료", 1.0, 0.9, 0);
+    EXPECT_CALL(mockOrderRepo_, findByStatus(OrderStatus::PRODUCING))
+        .WillOnce(Return(std::vector<Order>{o1}));
+    EXPECT_CALL(mockSampleRepo_, findById(_)).Times(0);
+    const auto result = controller_.getProductionQueue();
+    EXPECT_TRUE(result.empty());
 }
 
 // FR-050: CONFIRMED 주문 목록 반환
