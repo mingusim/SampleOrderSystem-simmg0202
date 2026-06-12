@@ -12,5 +12,6 @@ private:
     static int readMenuChoice();
     void showMainMenu();
     void handleSampleMenu();
+    void handleSearchMenu();
     void printSampleList(const std::vector<Sample>& samples);
 };

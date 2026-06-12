@@ -11,6 +11,10 @@ bool SampleController::registerSample(const std::string& id, const std::string& 
     return true;
 }
 
+std::optional<Sample> SampleController::findById(const std::string& id) {
+    return repo_.findById(id);
+}
+
 std::vector<Sample> SampleController::getAllSamples() {
     return repo_.findAll();
 }

@@ -37,7 +37,7 @@ void MainView::handleSampleMenu() {
         std::cout << "\n----- 시료 관리 -----\n";
         std::cout << "  1. 시료 등록\n";
         std::cout << "  2. 전체 목록 조회\n";
-        std::cout << "  3. 이름 검색\n";
+        std::cout << "  3. 시료 검색\n";
         std::cout << "  0. 뒤로\n";
         std::cout << "선택: ";
         const int choice = readMenuChoice();
@@ -59,12 +59,33 @@ void MainView::handleSampleMenu() {
         } else if (choice == 2) {
             printSampleList(sampleCtrl_.getAllSamples());
         } else if (choice == 3) {
-            std::string keyword;
-            std::cout << "검색어: "; std::getline(std::cin, keyword);
-            printSampleList(sampleCtrl_.searchByName(keyword));
+            handleSearchMenu();
         } else {
             std::cout << "잘못된 입력입니다.\n";
         }
+    }
+}
+
+void MainView::handleSearchMenu() {
+    std::cout << "\n  검색 방법:\n";
+    std::cout << "    1. ID로 검색\n";
+    std::cout << "    2. 이름으로 검색\n";
+    std::cout << "    0. 취소\n";
+    std::cout << "  선택: ";
+    const int type = readMenuChoice();
+
+    if (type == 1) {
+        std::string id;
+        std::cout << "ID: "; std::getline(std::cin, id);
+        const auto found = sampleCtrl_.findById(id);
+        if (found.has_value())
+            printSampleList({ *found });
+        else
+            std::cout << "해당 ID의 시료가 없습니다.\n";
+    } else if (type == 2) {
+        std::string keyword;
+        std::cout << "이름 검색어: "; std::getline(std::cin, keyword);
+        printSampleList(sampleCtrl_.searchByName(keyword));
     }
 }
 
