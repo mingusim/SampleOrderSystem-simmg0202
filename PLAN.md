@@ -322,5 +322,5 @@ struct ProductionInfo {
 
 ### validator agent 전체 검증
 
-- [ ] validator agent 실행 — 전체 FR PASS/FAIL 보고
-- [ ] FAIL 항목 수정 후 재검증
+- [x] validator agent 실행 — TEST_PLAN.md 기대값 검증, IntegrationTest.cpp 오류 확인
+- [x] FAIL 항목 수정 — IT-12 기대값·코드 수정, PRD FR-041/FR-042 명세 보완
