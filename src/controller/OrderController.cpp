@@ -188,13 +188,14 @@ std::vector<ProductionInfo> OrderController::getProductionQueue() {
     const auto producing = sortedProducing(orderRepo_.findByStatus(OrderStatus::PRODUCING));
 
     std::vector<ProductionInfo> result;
-    for (const auto& order : producing) {
-        auto optSample = sampleRepo_.findById(order.sampleId);
+    // front(index 0)는 현재 생산 중 — 대기 큐에서 제외
+    for (std::size_t i = 1; i < producing.size(); ++i) {
+        auto optSample = sampleRepo_.findById(producing[i].sampleId);
         if (!optSample) continue;
         const Sample& sample = *optSample;
         result.push_back({
-            order, sample,
-            sample.avgProductionTime * order.targetProductionQuantity
+            producing[i], sample,
+            sample.avgProductionTime * producing[i].targetProductionQuantity
         });
     }
     return result;
