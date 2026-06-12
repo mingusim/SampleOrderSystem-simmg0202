@@ -236,33 +236,6 @@ void MainView::printStockStatusList(const std::vector<SampleStockInfo>& infos) {
     }
 }
 
-void MainView::handleReleaseMenu() {
-    while (true) {
-        std::cout << "\n----- 출고 처리 -----\n";
-        std::cout << "  1. 출고 대기 목록 (CONFIRMED)\n";
-        std::cout << "  2. 출고 처리\n";
-        std::cout << "  0. 뒤로\n";
-        std::cout << "선택: ";
-        const int choice = readMenuChoice();
-        switch (choice) {
-            case 0: return;
-            case 1:
-                printOrderList(orderCtrl_.getConfirmedOrders());
-                break;
-            case 2: {
-                std::string orderId;
-                std::cout << "주문 ID: "; std::getline(std::cin, orderId);
-                if (orderCtrl_.releaseOrder(orderId))
-                    std::cout << "출고 처리 완료.\n";
-                else
-                    std::cout << "출고 실패 (주문 없음 또는 CONFIRMED 상태 아님).\n";
-                break;
-            }
-            default: std::cout << "잘못된 입력입니다.\n"; break;
-        }
-    }
-}
-
 void MainView::handleProductionMenu() {
     while (true) {
         std::cout << "\n----- 생산라인 -----\n";
@@ -284,6 +257,33 @@ void MainView::handleProductionMenu() {
             case 2:
                 printProductionQueue(orderCtrl_.getProductionQueue());
                 break;
+            default: std::cout << "잘못된 입력입니다.\n"; break;
+        }
+    }
+}
+
+void MainView::handleReleaseMenu() {
+    while (true) {
+        std::cout << "\n----- 출고 처리 -----\n";
+        std::cout << "  1. 출고 대기 목록\n";
+        std::cout << "  2. 출고 처리\n";
+        std::cout << "  0. 뒤로\n";
+        std::cout << "선택: ";
+        const int choice = readMenuChoice();
+        switch (choice) {
+            case 0: return;
+            case 1:
+                printOrderList(orderCtrl_.getConfirmedOrders());
+                break;
+            case 2: {
+                std::string orderId;
+                std::cout << "주문 ID: "; std::getline(std::cin, orderId);
+                if (orderCtrl_.releaseOrder(orderId))
+                    std::cout << "출고 처리 완료.\n";
+                else
+                    std::cout << "출고 실패 (주문 없음 또는 승인완료 상태 아님).\n";
+                break;
+            }
             default: std::cout << "잘못된 입력입니다.\n"; break;
         }
     }

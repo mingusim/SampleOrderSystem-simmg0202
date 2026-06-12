@@ -229,7 +229,9 @@ struct ProductionInfo {
 → **사용자 리뷰 후 커밋**
 
 **[REFACTOR]**
-- [ ] refactor agent 실행
+- [x] refactor agent 실행
+  - `sortedProducing()` / `orderByProductionStart()` static 헬퍼 추출
+  - `TimeUtils` 네임스페이스로 타임스탬프 유틸 분리 (`src/utils/TimeUtils.h`)
 
 → **사용자 리뷰 후 커밋**
 
@@ -270,7 +272,10 @@ struct ProductionInfo {
 → **사용자 리뷰 후 커밋**
 
 **[REFACTOR]**
-- [ ] refactor agent 실행
+- [x] refactor agent 실행
+  - View 메서드 정의 순서 정렬 (run() case 순서와 일치)
+  - 오류 메시지 한국어 통일 ("CONFIRMED 상태 아님" → "승인완료 상태 아님")
+  - "출고 대기 목록" 영문 태그 제거 — 다른 메뉴 항목과 일관성
 
 → **사용자 리뷰 후 커밋**
 
@@ -278,8 +283,25 @@ struct ProductionInfo {
 
 ## Phase 9. 메인 메뉴 통합 (FR-001~003)
 
-- [ ] 시스템 시작 시 메인 메뉴 표시
-- [ ] 전체 시료 수, 상태별 주문 수 요약 표시 (FR-003)
+### 설계
+
+- FR-001, FR-002: 이미 구현됨 (`run()` 루프 + `showMainMenu()` 항목 구성)
+- FR-003: `showMainMenu()`에 요약 라인 추가 — 신규 Controller 메서드 불필요
+
+```
+========== 시료 생산주문관리 시스템 ==========
+[요약] 시료: N종  |  접수대기: R  생산중: P  승인완료: C  출고완료: L
+  1. 시료 관리
+  ...
+```
+
+구현:
+- `sampleCtrl_.getAllSamples().size()` — 전체 시료 수
+- `orderCtrl_.getOrderStats()` — 상태별 주문 건수 (기존 메서드 재사용)
+
+> Phase 9는 View 단순 표시 추가이며 비즈니스 로직 없음 → 별도 단위 테스트 불필요 (통합 테스트로 커버)
+
+- [ ] `showMainMenu()` — FR-003 요약 라인 추가
 - [ ] 전체 메뉴 흐름 통합 확인
 
 → **사용자 리뷰 후 커밋**
