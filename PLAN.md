@@ -262,10 +262,10 @@ struct ProductionInfo {
 → **사용자 리뷰 후 커밋**
 
 **[GREEN]**
-- [ ] `OrderController::getConfirmedOrders()` 구현
-- [ ] `OrderController::releaseOrder()` 구현 (CONFIRMED 검증 → RELEASE 전환 → stock -= quantity)
-- [ ] `MainView` — 출고 처리 서브메뉴 UI (CONFIRMED 목록 표시 → 출고 처리)
-- [ ] 테스트 통과 확인
+- [x] `OrderController::getConfirmedOrders()` 구현
+- [x] `OrderController::releaseOrder()` 구현 (CONFIRMED 검증 → RELEASE 전환 → stock -= quantity)
+- [x] `MainView` — 출고 처리 서브메뉴 UI (CONFIRMED 목록 표시 → 출고 처리)
+- [x] 테스트 통과 확인 (54/54)
 
 → **사용자 리뷰 후 커밋**
 

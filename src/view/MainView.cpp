@@ -35,6 +35,7 @@ void MainView::run() {
             case 2: handleOrderMenu();       break;
             case 3: handleMonitorMenu();     break;
             case 4: handleProductionMenu();  break;
+            case 5: handleReleaseMenu();     break;
             case 0: return;
             default: std::cout << "잘못된 입력입니다.\n";
         }
@@ -47,6 +48,7 @@ void MainView::showMainMenu() {
     std::cout << "  2. 주문 관리\n";
     std::cout << "  3. 모니터링\n";
     std::cout << "  4. 생산라인\n";
+    std::cout << "  5. 출고 처리\n";
     std::cout << "  0. 종료\n";
     std::cout << "선택: ";
 }
@@ -231,6 +233,33 @@ void MainView::printStockStatusList(const std::vector<SampleStockInfo>& infos) {
                   << std::setw(16) << info.sample.name
                   << std::setw(8)  << info.sample.stock
                   << std::setw(8)  << stockStatusLabel(info.stockStatus) << "\n";
+    }
+}
+
+void MainView::handleReleaseMenu() {
+    while (true) {
+        std::cout << "\n----- 출고 처리 -----\n";
+        std::cout << "  1. 출고 대기 목록 (CONFIRMED)\n";
+        std::cout << "  2. 출고 처리\n";
+        std::cout << "  0. 뒤로\n";
+        std::cout << "선택: ";
+        const int choice = readMenuChoice();
+        switch (choice) {
+            case 0: return;
+            case 1:
+                printOrderList(orderCtrl_.getConfirmedOrders());
+                break;
+            case 2: {
+                std::string orderId;
+                std::cout << "주문 ID: "; std::getline(std::cin, orderId);
+                if (orderCtrl_.releaseOrder(orderId))
+                    std::cout << "출고 처리 완료.\n";
+                else
+                    std::cout << "출고 실패 (주문 없음 또는 CONFIRMED 상태 아님).\n";
+                break;
+            }
+            default: std::cout << "잘못된 입력입니다.\n"; break;
+        }
     }
 }
 

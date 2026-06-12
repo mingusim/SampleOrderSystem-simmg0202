@@ -186,3 +186,25 @@ std::vector<ProductionInfo> OrderController::getProductionQueue() {
     }
     return result;
 }
+
+std::vector<Order> OrderController::getConfirmedOrders() {
+    return orderRepo_.findByStatus(OrderStatus::CONFIRMED);
+}
+
+bool OrderController::releaseOrder(const std::string& orderId) {
+    auto optOrder = orderRepo_.findById(orderId);
+    if (!optOrder) return false;
+    Order order = *optOrder;
+    if (order.status != OrderStatus::CONFIRMED) return false;
+
+    auto optSample = sampleRepo_.findById(order.sampleId);
+    if (!optSample) return false;
+    Sample sample = *optSample;
+
+    order.status = OrderStatus::RELEASE;
+    sample.stock -= order.quantity;
+
+    orderRepo_.save(order);
+    sampleRepo_.save(sample);
+    return true;
+}
