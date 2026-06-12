@@ -8,6 +8,7 @@
 
 using ::testing::Return;
 using ::testing::Field;
+using ::testing::AllOf;
 using ::testing::_;
 
 namespace {
@@ -253,6 +254,60 @@ TEST_F(OrderControllerTest, UpdateProduction_TotalTimeElapsed_BecomesConfirmed) 
     EXPECT_CALL(mockOrderRepo_, save(Field(&Order::status, OrderStatus::CONFIRMED))).Times(1);
     EXPECT_CALL(mockSampleRepo_, save(_)).Times(1);
     controller_.updateProduction("2026-01-01 20:00:00");  // 10h 경과
+}
+
+// FR-042: FIFO 단일 생산라인 — front(startedAt 오래된 것)만 진행, queue는 변화 없음
+TEST_F(OrderControllerTest, UpdateProduction_TwoProducing_OnlyFrontProgresses) {
+    // O-001: 먼저 시작된 front 주문
+    Order front = DummyDataGenerator::makeOrder(
+        "O-001", "S-001", "고객A", 5, OrderStatus::PRODUCING,
+        "2026-01-01 08:00:00", "2026-01-01 08:00:00", 0, 5);
+    // O-002: 나중에 시작된 queue 주문 (producedQty=0 유지해야 함)
+    Order queued = DummyDataGenerator::makeOrder(
+        "O-002", "S-001", "고객B", 5, OrderStatus::PRODUCING,
+        "2026-01-01 09:00:00", "2026-01-01 09:00:00", 0, 5);
+    Sample sample = DummyDataGenerator::makeSample("S-001", "시료", 1.0, 0.9, 0);
+
+    EXPECT_CALL(mockOrderRepo_, findByStatus(OrderStatus::PRODUCING))
+        .WillOnce(Return(std::vector<Order>{front, queued}));
+    EXPECT_CALL(mockSampleRepo_, findById("S-001"))
+        .WillOnce(Return(std::optional<Sample>{sample}));
+
+    // O-001만 save 호출 (producedQty=2), O-002는 save 없음
+    // now="2026-01-01 10:00:00": O-001 elapsed=2h → ceil(2/1)=2, delta=2
+    EXPECT_CALL(mockOrderRepo_, save(Field(&Order::id, "O-001"))).Times(1);
+    EXPECT_CALL(mockOrderRepo_, save(Field(&Order::id, "O-002"))).Times(0);
+    EXPECT_CALL(mockSampleRepo_, save(_)).Times(1);
+
+    controller_.updateProduction("2026-01-01 10:00:00");
+}
+
+// FR-042: FIFO front 완료 시 next 주문의 productionStartedAt을 현재 시각으로 리셋
+TEST_F(OrderControllerTest, UpdateProduction_FrontCompletes_NextStartedAtReset) {
+    // O-001: front, 10h 경과 → target=10 → 완료 예정
+    Order front = DummyDataGenerator::makeOrder(
+        "O-001", "S-001", "고객A", 10, OrderStatus::PRODUCING,
+        "2026-01-01 08:00:00", "2026-01-01 08:00:00", 0, 10);
+    // O-002: queue, productionStartedAt은 승인 시점(09:00)
+    Order queued = DummyDataGenerator::makeOrder(
+        "O-002", "S-001", "고객B", 5, OrderStatus::PRODUCING,
+        "2026-01-01 09:00:00", "2026-01-01 09:00:00", 0, 5);
+    Sample sample = DummyDataGenerator::makeSample("S-001", "시료", 1.0, 0.9, 0);
+
+    EXPECT_CALL(mockOrderRepo_, findByStatus(OrderStatus::PRODUCING))
+        .WillOnce(Return(std::vector<Order>{front, queued}));
+    EXPECT_CALL(mockSampleRepo_, findById("S-001"))
+        .WillOnce(Return(std::optional<Sample>{sample}));
+
+    // O-001 완료(CONFIRMED) save
+    EXPECT_CALL(mockOrderRepo_, save(Field(&Order::status, OrderStatus::CONFIRMED))).Times(1);
+    // O-002 productionStartedAt이 now("2026-01-01 18:00:00")로 리셋되어 save
+    EXPECT_CALL(mockOrderRepo_, save(
+        AllOf(Field(&Order::id, "O-002"),
+              Field(&Order::productionStartedAt, "2026-01-01 18:00:00")))).Times(1);
+    EXPECT_CALL(mockSampleRepo_, save(_)).Times(1);
+
+    controller_.updateProduction("2026-01-01 18:00:00");  // 10h 경과 → O-001 완료
 }
 
 // FR-040: PRODUCING 주문 있음 → ProductionInfo 반환
