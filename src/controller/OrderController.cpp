@@ -169,19 +169,20 @@ void OrderController::updateProduction(const std::string& now) {
     }
 }
 
-std::optional<ProductionInfo> OrderController::getCurrentProduction() {
-    auto producing = sortedProducing(orderRepo_.findByStatus(OrderStatus::PRODUCING));
-    if (producing.empty()) return std::nullopt;
-
-    const Order& order = producing.front();
+std::optional<ProductionInfo> OrderController::makeProductionInfo(const Order& order) const {
     auto optSample = sampleRepo_.findById(order.sampleId);
     if (!optSample) return std::nullopt;
     const Sample& sample = *optSample;
-
     return ProductionInfo{
         order, sample,
         sample.avgProductionTime * order.targetProductionQuantity
     };
+}
+
+std::optional<ProductionInfo> OrderController::getCurrentProduction() {
+    const auto producing = sortedProducing(orderRepo_.findByStatus(OrderStatus::PRODUCING));
+    if (producing.empty()) return std::nullopt;
+    return makeProductionInfo(producing.front());
 }
 
 std::vector<ProductionInfo> OrderController::getProductionQueue() {
@@ -189,14 +190,9 @@ std::vector<ProductionInfo> OrderController::getProductionQueue() {
 
     std::vector<ProductionInfo> result;
     // front(index 0)는 현재 생산 중 — 대기 큐에서 제외
-    for (std::size_t i = 1; i < producing.size(); ++i) {
-        auto optSample = sampleRepo_.findById(producing[i].sampleId);
-        if (!optSample) continue;
-        const Sample& sample = *optSample;
-        result.push_back({
-            producing[i], sample,
-            sample.avgProductionTime * producing[i].targetProductionQuantity
-        });
+    for (auto it = std::next(producing.begin()); it != producing.end(); ++it) {
+        if (auto info = makeProductionInfo(*it))
+            result.push_back(std::move(*info));
     }
     return result;
 }

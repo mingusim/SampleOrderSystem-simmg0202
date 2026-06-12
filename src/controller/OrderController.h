@@ -30,4 +30,5 @@ private:
     std::string generateOrderId();
     int calcReservedQuantity(const std::string& sampleId, const std::string& excludeOrderId) const;
     void transitionToProducing(Order& order, const Sample& sample, int available);
+    std::optional<ProductionInfo> makeProductionInfo(const Order& order) const;
 };
