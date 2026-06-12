@@ -75,3 +75,20 @@ TEST_F(SampleControllerTest, SearchByName_DelegatesToRepository) {
     ASSERT_EQ(1u, result.size());
     EXPECT_EQ("S-001", result[0].id);
 }
+
+// FR-012: ID 검색 — 존재하는 경우
+TEST_F(SampleControllerTest, FindById_Found_ReturnsSample) {
+    Sample s{ "S-001", "반도체시료", 1.0, 0.9, 10 };
+    EXPECT_CALL(mockRepo_, findById("S-001")).WillOnce(Return(std::optional<Sample>{ s }));
+    auto result = controller_.findById("S-001");
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ("S-001", result->id);
+    EXPECT_EQ("반도체시료", result->name);
+}
+
+// FR-012: ID 검색 — 존재하지 않는 경우
+TEST_F(SampleControllerTest, FindById_NotFound_ReturnsNullopt) {
+    EXPECT_CALL(mockRepo_, findById("S-999")).WillOnce(Return(std::nullopt));
+    auto result = controller_.findById("S-999");
+    EXPECT_FALSE(result.has_value());
+}
