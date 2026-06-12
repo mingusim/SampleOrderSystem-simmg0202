@@ -28,7 +28,7 @@ int MainView::readMenuChoice() {
 
 void MainView::run() {
     while (true) {
-        orderCtrl_.updateProduction(TimeUtils::currentTimestamp());  // FR-042
+        orderCtrl_.updateProduction(TimeUtils::currentTimestamp());
         showMainMenu();
         switch (readMenuChoice()) {
             case 1: handleSampleMenu();      break;
