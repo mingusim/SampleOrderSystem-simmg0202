@@ -295,3 +295,49 @@ TEST_F(OrderControllerTest, GetProductionQueue_MultipleProducing_ReturnsAll) {
     const auto result = controller_.getProductionQueue();
     EXPECT_EQ(2u, result.size());
 }
+
+// FR-050: CONFIRMED 주문 목록 반환
+TEST_F(OrderControllerTest, GetConfirmedOrders_DelegatesToFindByStatus) {
+    std::vector<Order> confirmed = { makeOrderWithStatus("O-001", OrderStatus::CONFIRMED) };
+    EXPECT_CALL(mockOrderRepo_, findByStatus(OrderStatus::CONFIRMED)).WillOnce(Return(confirmed));
+    const auto result = controller_.getConfirmedOrders();
+    ASSERT_EQ(1u, result.size());
+    EXPECT_EQ("O-001", result[0].id);
+}
+
+// FR-051: 주문 미존재 시 거부
+TEST_F(OrderControllerTest, ReleaseOrder_NotFound_ReturnsFalse) {
+    EXPECT_CALL(mockOrderRepo_, findById("O-999")).WillOnce(Return(std::nullopt));
+    EXPECT_CALL(mockOrderRepo_, save(_)).Times(0);
+    EXPECT_FALSE(controller_.releaseOrder("O-999"));
+}
+
+// FR-051: CONFIRMED 아닌 상태 → 거부
+TEST_F(OrderControllerTest, ReleaseOrder_NotConfirmed_ReturnsFalse) {
+    Order order = makeOrderWithStatus("O-001", OrderStatus::PRODUCING);
+    EXPECT_CALL(mockOrderRepo_, findById("O-001")).WillOnce(Return(std::optional<Order>{order}));
+    EXPECT_CALL(mockOrderRepo_, save(_)).Times(0);
+    EXPECT_FALSE(controller_.releaseOrder("O-001"));
+}
+
+// FR-051: CONFIRMED → RELEASE 전환
+TEST_F(OrderControllerTest, ReleaseOrder_Confirmed_BecomesRelease) {
+    Order order = makeOrderWithStatus("O-001", OrderStatus::CONFIRMED);
+    Sample sample = DummyDataGenerator::makeSample("S-001", "시료", 1.0, 0.9, 10);
+    EXPECT_CALL(mockOrderRepo_, findById("O-001")).WillOnce(Return(std::optional<Order>{order}));
+    EXPECT_CALL(mockSampleRepo_, findById("S-001")).WillOnce(Return(std::optional<Sample>{sample}));
+    EXPECT_CALL(mockOrderRepo_, save(Field(&Order::status, OrderStatus::RELEASE))).Times(1);
+    EXPECT_CALL(mockSampleRepo_, save(_)).Times(1);
+    EXPECT_TRUE(controller_.releaseOrder("O-001"));
+}
+
+// FR-051: 출고 후 stock -= quantity
+TEST_F(OrderControllerTest, ReleaseOrder_Confirmed_StockDecremented) {
+    Order order = DummyDataGenerator::makeOrder("O-001", "S-001", "고객A", 3, OrderStatus::CONFIRMED);
+    Sample sample = DummyDataGenerator::makeSample("S-001", "시료", 1.0, 0.9, 10);
+    EXPECT_CALL(mockOrderRepo_, findById("O-001")).WillOnce(Return(std::optional<Order>{order}));
+    EXPECT_CALL(mockSampleRepo_, findById("S-001")).WillOnce(Return(std::optional<Sample>{sample}));
+    EXPECT_CALL(mockSampleRepo_, save(Field(&Sample::stock, 7))).Times(1);  // 10-3
+    EXPECT_CALL(mockOrderRepo_, save(_)).Times(1);
+    EXPECT_TRUE(controller_.releaseOrder("O-001"));
+}

@@ -20,6 +20,8 @@ public:
     void updateProduction(const std::string& now);
     std::optional<ProductionInfo> getCurrentProduction();
     std::vector<ProductionInfo> getProductionQueue();
+    std::vector<Order> getConfirmedOrders();
+    bool releaseOrder(const std::string& orderId);
 
 private:
     ISampleRepository& sampleRepo_;

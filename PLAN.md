@@ -237,18 +237,34 @@ struct ProductionInfo {
 
 ## Phase 8. 출고 처리 (FR-050~051)
 
+### 신규 메서드
+
+| 메서드 | 위치 | 설명 |
+|--------|------|------|
+| `std::vector<Order> getConfirmedOrders()` | `OrderController` | FR-050: CONFIRMED 목록 반환 |
+| `bool releaseOrder(const std::string& orderId)` | `OrderController` | FR-051: 출고 처리 |
+
+### RED 테스트 목록 (5개)
+
+| # | 테스트명 | FR | 사전 조건 | 검증 내용 |
+|---|---------|-----|----------|----------|
+| T1 | `GetConfirmedOrders_DelegatesToFindByStatus` | FR-050 | CONFIRMED 주문 1개 | `findByStatus(CONFIRMED)` 위임 확인 |
+| T2 | `ReleaseOrder_NotFound_ReturnsFalse` | FR-051 | 존재하지 않는 orderId | `false` 반환, save 없음 |
+| T3 | `ReleaseOrder_NotConfirmed_ReturnsFalse` | FR-051 | PRODUCING 상태 주문 | `false` 반환 (CONFIRMED 아니면 출고 불가) |
+| T4 | `ReleaseOrder_Confirmed_BecomesRelease` | FR-051 | CONFIRMED 주문, stock=10 | 상태 RELEASE, save 1회 |
+| T5 | `ReleaseOrder_Confirmed_StockDecremented` | FR-051 | CONFIRMED 주문, quantity=3, stock=10 | stock=7 (10-3), sampleRepo.save 호출 |
+
 **[RED]**
-- [ ] 출고 처리 단위 테스트 작성
-  - FR-051: CONFIRMED → RELEASE 전환
-  - FR-051: 출고 후 stock -= quantity 확인
-- [ ] 빌드·실행 → 테스트 실패 확인
+- [x] `OrderController` 신규 메서드 선언: `getConfirmedOrders()`, `releaseOrder()`
+- [x] `OrderControllerTest` 출고 처리 테스트 추가 (5개, 위 목록 참고)
+- [x] 빌드·실행 → 테스트 실패(링커 에러) 확인
 
 → **사용자 리뷰 후 커밋**
 
 **[GREEN]**
-- [ ] FR-050: CONFIRMED 주문 목록 표시
-- [ ] FR-051: 출고 처리 구현
-- [ ] `MainView` — 출고 처리 서브메뉴 UI
+- [ ] `OrderController::getConfirmedOrders()` 구현
+- [ ] `OrderController::releaseOrder()` 구현 (CONFIRMED 검증 → RELEASE 전환 → stock -= quantity)
+- [ ] `MainView` — 출고 처리 서브메뉴 UI (CONFIRMED 목록 표시 → 출고 처리)
 - [ ] 테스트 통과 확인
 
 → **사용자 리뷰 후 커밋**
