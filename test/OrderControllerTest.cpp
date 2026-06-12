@@ -193,8 +193,8 @@ TEST_F(OrderControllerTest, GetActiveOrders_ReturnsOnlyConfirmedAndProducing) {
         [](const Order& o){ return o.status == OrderStatus::PRODUCING; }));
 }
 
-// FR-042: 경과 시간 < 1단위 → delta=0, save 없음
-TEST_F(OrderControllerTest, UpdateProduction_ElapsedLessThanOneUnit_NoDeltaNoSave) {
+// FR-042: 경과 시간 = 0 → delta=0, save 없음
+TEST_F(OrderControllerTest, UpdateProduction_ZeroElapsed_NoDeltaNoSave) {
     Order order = DummyDataGenerator::makeOrder(
         "O-001", "S-001", "고객A", 5, OrderStatus::PRODUCING,
         "2026-01-01 10:00:00", "2026-01-01 10:00:00", 0, 10);
@@ -205,10 +205,10 @@ TEST_F(OrderControllerTest, UpdateProduction_ElapsedLessThanOneUnit_NoDeltaNoSav
         .WillOnce(Return(std::optional<Sample>{sample}));
     EXPECT_CALL(mockOrderRepo_, save(_)).Times(0);
     EXPECT_CALL(mockSampleRepo_, save(_)).Times(0);
-    controller_.updateProduction("2026-01-01 10:54:00");  // 0.9h 경과
+    controller_.updateProduction("2026-01-01 10:00:00");  // 0h 경과
 }
 
-// FR-042: 경과 2.5h, avgTime=1.0h → delta=2, stock+=2, producedQty=2
+// FR-042: 경과 2.5h, avgTime=1.0h → delta=3(ceil), stock+=3, producedQty=3
 TEST_F(OrderControllerTest, UpdateProduction_Elapsed2_5h_DeltaApplied) {
     Order order = DummyDataGenerator::makeOrder(
         "O-001", "S-001", "고객A", 5, OrderStatus::PRODUCING,
@@ -218,12 +218,12 @@ TEST_F(OrderControllerTest, UpdateProduction_Elapsed2_5h_DeltaApplied) {
         .WillOnce(Return(std::vector<Order>{order}));
     EXPECT_CALL(mockSampleRepo_, findById("S-001"))
         .WillOnce(Return(std::optional<Sample>{sample}));
-    EXPECT_CALL(mockOrderRepo_, save(Field(&Order::producedQuantity, 2))).Times(1);
-    EXPECT_CALL(mockSampleRepo_, save(Field(&Sample::stock, 7))).Times(1);  // 5+2
+    EXPECT_CALL(mockOrderRepo_, save(Field(&Order::producedQuantity, 3))).Times(1);
+    EXPECT_CALL(mockSampleRepo_, save(Field(&Sample::stock, 8))).Times(1);  // 5+3
     controller_.updateProduction("2026-01-01 12:30:00");  // 2.5h 경과
 }
 
-// FR-042: floor(elapsed/avgTime) > targetQty → producedQty 클램프
+// FR-042: ceil(elapsed/avgTime) > targetQty → producedQty 클램프
 TEST_F(OrderControllerTest, UpdateProduction_DeltaExceedsRemaining_ClampedToTarget) {
     Order order = DummyDataGenerator::makeOrder(
         "O-001", "S-001", "고객A", 5, OrderStatus::PRODUCING,
@@ -233,7 +233,7 @@ TEST_F(OrderControllerTest, UpdateProduction_DeltaExceedsRemaining_ClampedToTarg
         .WillOnce(Return(std::vector<Order>{order}));
     EXPECT_CALL(mockSampleRepo_, findById("S-001"))
         .WillOnce(Return(std::optional<Sample>{sample}));
-    // floor(12/1)=12 → capped to 10 → delta=2 (not 4)
+    // ceil(12/1)=12 → capped to 10 → delta=2 (not 4)
     EXPECT_CALL(mockOrderRepo_, save(Field(&Order::producedQuantity, 10))).Times(1);
     EXPECT_CALL(mockSampleRepo_, save(Field(&Sample::stock, 5))).Times(1);  // 3+2
     controller_.updateProduction("2026-01-01 22:00:00");  // 12h 경과

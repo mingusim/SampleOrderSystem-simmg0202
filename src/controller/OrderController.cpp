@@ -139,7 +139,7 @@ void OrderController::updateProduction(const std::string& now) {
         Sample sample = *optSample;
 
         const double elapsed = TimeUtils::elapsedHours(order.productionStartedAt, now);
-        const int cumulative = static_cast<int>(std::floor(elapsed / sample.avgProductionTime));
+        const int cumulative = static_cast<int>(std::ceil(elapsed / sample.avgProductionTime));
         const int totalProduced = std::min(cumulative, order.targetProductionQuantity);
         const int delta = totalProduced - order.producedQuantity;
 
