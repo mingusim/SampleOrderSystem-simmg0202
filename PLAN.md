@@ -220,11 +220,11 @@ struct ProductionInfo {
 → **사용자 리뷰 후 커밋**
 
 **[GREEN]**
-- [ ] `OrderController::updateProduction()` 구현 (elapsed 계산, delta 적용, CONFIRMED 전환)
-- [ ] `OrderController::getCurrentProduction()` 구현
-- [ ] `OrderController::getProductionQueue()` 구현
-- [ ] `MainView` — 생산라인 서브메뉴 UI (현재 생산 / 대기 큐 / 상태 갱신)
-- [ ] 테스트 통과 확인
+- [x] `OrderController::updateProduction()` 구현 (elapsed 계산, delta 적용, CONFIRMED 전환)
+- [x] `OrderController::getCurrentProduction()` 구현
+- [x] `OrderController::getProductionQueue()` 구현
+- [x] `MainView` — 생산라인 서브메뉴 UI (현재 생산 / 대기 큐 / 상태 갱신)
+- [x] 테스트 통과 확인 (49/49)
 
 → **사용자 리뷰 후 커밋**
 

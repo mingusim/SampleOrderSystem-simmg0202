@@ -198,8 +198,11 @@ TEST_F(OrderControllerTest, UpdateProduction_ElapsedLessThanOneUnit_NoDeltaNoSav
     Order order = DummyDataGenerator::makeOrder(
         "O-001", "S-001", "고객A", 5, OrderStatus::PRODUCING,
         "2026-01-01 10:00:00", "2026-01-01 10:00:00", 0, 10);
+    Sample sample = DummyDataGenerator::makeSample("S-001", "시료", 1.0, 0.9, 0);
     EXPECT_CALL(mockOrderRepo_, findByStatus(OrderStatus::PRODUCING))
         .WillOnce(Return(std::vector<Order>{order}));
+    EXPECT_CALL(mockSampleRepo_, findById("S-001"))
+        .WillOnce(Return(std::optional<Sample>{sample}));
     EXPECT_CALL(mockOrderRepo_, save(_)).Times(0);
     EXPECT_CALL(mockSampleRepo_, save(_)).Times(0);
     controller_.updateProduction("2026-01-01 10:54:00");  // 0.9h 경과

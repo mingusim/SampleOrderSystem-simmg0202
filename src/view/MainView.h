@@ -17,7 +17,10 @@ private:
     void handleSearchMenu();
     void handleOrderMenu();
     void handleMonitorMenu();
+    void handleProductionMenu();
     void printSampleList(const std::vector<Sample>& samples);
     void printOrderList(const std::vector<Order>& orders);
     void printStockStatusList(const std::vector<SampleStockInfo>& infos);
+    void printProductionInfo(const ProductionInfo& info);
+    void printProductionQueue(const std::vector<ProductionInfo>& queue);
 };

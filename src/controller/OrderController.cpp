@@ -5,8 +5,19 @@
 #include <ctime>
 #include <iomanip>
 #include <sstream>
+#include <unordered_map>
 
 static constexpr std::string_view kOrderIdPrefix = "O-";
+
+static double elapsedHours(const std::string& from, const std::string& to) {
+    auto parse = [](const std::string& s) -> std::time_t {
+        std::tm tm{};
+        std::istringstream ss(s);
+        ss >> std::get_time(&tm, "%Y-%m-%d %H:%M:%S");
+        return std::mktime(&tm);
+    };
+    return std::difftime(parse(to), parse(from)) / 3600.0;
+}
 
 static std::string currentTimestamp() {
     auto now = std::chrono::system_clock::now();
@@ -134,5 +145,69 @@ std::unordered_map<std::string, int> OrderController::getActiveQtyBySample() {
     std::unordered_map<std::string, int> result;
     for (const auto& o : getActiveOrders())
         result[o.sampleId] += o.quantity;
+    return result;
+}
+
+void OrderController::updateProduction(const std::string& now) {
+    for (auto order : orderRepo_.findByStatus(OrderStatus::PRODUCING)) {
+        auto optSample = sampleRepo_.findById(order.sampleId);
+        if (!optSample) continue;
+        Sample sample = *optSample;
+
+        const double elapsed = elapsedHours(order.productionStartedAt, now);
+        const int cumulative = static_cast<int>(std::floor(elapsed / sample.avgProductionTime));
+        const int totalProduced = std::min(cumulative, order.targetProductionQuantity);
+        const int delta = totalProduced - order.producedQuantity;
+
+        if (delta <= 0) continue;
+
+        order.producedQuantity += delta;
+        sample.stock += delta;
+
+        if (order.producedQuantity >= order.targetProductionQuantity)
+            order.status = OrderStatus::CONFIRMED;
+
+        orderRepo_.save(order);
+        sampleRepo_.save(sample);
+    }
+}
+
+std::optional<ProductionInfo> OrderController::getCurrentProduction() {
+    auto producing = orderRepo_.findByStatus(OrderStatus::PRODUCING);
+    if (producing.empty()) return std::nullopt;
+
+    std::sort(producing.begin(), producing.end(),
+        [](const Order& a, const Order& b) {
+            return a.productionStartedAt < b.productionStartedAt;
+        });
+
+    const Order& order = producing.front();
+    auto optSample = sampleRepo_.findById(order.sampleId);
+    if (!optSample) return std::nullopt;
+    const Sample& sample = *optSample;
+
+    return ProductionInfo{
+        order, sample,
+        sample.avgProductionTime * order.targetProductionQuantity
+    };
+}
+
+std::vector<ProductionInfo> OrderController::getProductionQueue() {
+    auto producing = orderRepo_.findByStatus(OrderStatus::PRODUCING);
+    std::sort(producing.begin(), producing.end(),
+        [](const Order& a, const Order& b) {
+            return a.productionStartedAt < b.productionStartedAt;
+        });
+
+    std::vector<ProductionInfo> result;
+    for (const auto& order : producing) {
+        auto optSample = sampleRepo_.findById(order.sampleId);
+        if (!optSample) continue;
+        const Sample& sample = *optSample;
+        result.push_back({
+            order, sample,
+            sample.avgProductionTime * order.targetProductionQuantity
+        });
+    }
     return result;
 }

@@ -1,8 +1,25 @@
 #include "view/MainView.h"
+#include <chrono>
+#include <ctime>
 #include <iostream>
 #include <iomanip>
+#include <sstream>
 #include <string>
 #include <limits>
+
+static std::string currentTimestamp() {
+    auto now = std::chrono::system_clock::now();
+    auto t   = std::chrono::system_clock::to_time_t(now);
+    std::tm tm{};
+#ifdef _WIN32
+    localtime_s(&tm, &t);
+#else
+    localtime_r(&t, &tm);
+#endif
+    std::ostringstream oss;
+    oss << std::put_time(&tm, "%Y-%m-%d %H:%M:%S");
+    return oss.str();
+}
 
 static std::string statusLabel(OrderStatus s) {
     switch (s) {
@@ -27,11 +44,13 @@ int MainView::readMenuChoice() {
 
 void MainView::run() {
     while (true) {
+        orderCtrl_.updateProduction(currentTimestamp());  // FR-042
         showMainMenu();
         switch (readMenuChoice()) {
-            case 1: handleSampleMenu();   break;
-            case 2: handleOrderMenu();    break;
-            case 3: handleMonitorMenu();  break;
+            case 1: handleSampleMenu();      break;
+            case 2: handleOrderMenu();       break;
+            case 3: handleMonitorMenu();     break;
+            case 4: handleProductionMenu();  break;
             case 0: return;
             default: std::cout << "잘못된 입력입니다.\n";
         }
@@ -43,6 +62,7 @@ void MainView::showMainMenu() {
     std::cout << "  1. 시료 관리\n";
     std::cout << "  2. 주문 관리\n";
     std::cout << "  3. 모니터링\n";
+    std::cout << "  4. 생산라인\n";
     std::cout << "  0. 종료\n";
     std::cout << "선택: ";
 }
@@ -227,6 +247,64 @@ void MainView::printStockStatusList(const std::vector<SampleStockInfo>& infos) {
                   << std::setw(16) << info.sample.name
                   << std::setw(8)  << info.sample.stock
                   << std::setw(8)  << stockStatusLabel(info.stockStatus) << "\n";
+    }
+}
+
+void MainView::handleProductionMenu() {
+    while (true) {
+        std::cout << "\n----- 생산라인 -----\n";
+        std::cout << "  1. 현재 생산 현황\n";
+        std::cout << "  2. 생산 대기 큐\n";
+        std::cout << "  0. 뒤로\n";
+        std::cout << "선택: ";
+        const int choice = readMenuChoice();
+        switch (choice) {
+            case 0: return;
+            case 1: {
+                const auto info = orderCtrl_.getCurrentProduction();
+                if (info.has_value())
+                    printProductionInfo(*info);
+                else
+                    std::cout << "현재 생산 중인 주문이 없습니다.\n";
+                break;
+            }
+            case 2:
+                printProductionQueue(orderCtrl_.getProductionQueue());
+                break;
+            default: std::cout << "잘못된 입력입니다.\n"; break;
+        }
+    }
+}
+
+void MainView::printProductionInfo(const ProductionInfo& info) {
+    std::cout << "\n----- 현재 생산 현황 -----\n";
+    std::cout << "  주문 ID  : " << info.order.id           << "\n";
+    std::cout << "  시료     : " << info.sample.name        << " (" << info.sample.id << ")\n";
+    std::cout << "  고객     : " << info.order.customerName << "\n";
+    std::cout << "  생산 시작: " << info.order.productionStartedAt << "\n";
+    std::cout << "  생산량   : " << info.order.producedQuantity
+              << " / " << info.order.targetProductionQuantity << "\n";
+    std::cout << "  예상 총시간: " << info.totalProductionHours << "h\n";
+}
+
+void MainView::printProductionQueue(const std::vector<ProductionInfo>& queue) {
+    if (queue.empty()) { std::cout << "생산 대기 중인 주문이 없습니다.\n"; return; }
+    std::cout << "\n"
+              << std::left
+              << std::setw(10) << "주문ID"
+              << std::setw(10) << "시료ID"
+              << std::setw(8)  << "생산량"
+              << std::setw(8)  << "목표량"
+              << std::setw(12) << "총시간(h)"
+              << "생산시작" << "\n";
+    std::cout << std::string(58, '-') << "\n";
+    for (const auto& info : queue) {
+        std::cout << std::setw(10) << info.order.id
+                  << std::setw(10) << info.sample.id
+                  << std::setw(8)  << info.order.producedQuantity
+                  << std::setw(8)  << info.order.targetProductionQuantity
+                  << std::setw(12) << info.totalProductionHours
+                  << info.order.productionStartedAt << "\n";
     }
 }
 
