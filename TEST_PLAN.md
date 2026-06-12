@@ -1,129 +1,358 @@
-# TEST_PLAN.md — 반도체 시료 생산주문관리 시스템
+# TEST_PLAN.md — 통합 테스트 플랜
 
-> 생성 기준일: 2026-06-12  
-> 테스트 프레임워크: Google Mock 1.11.0  
-> 상태 범례: GREEN = 구현 완료·통과 / RED = 미구현·실패 예정
-
----
-
-## Phase 3. Repository 통합 테스트
-
-### SampleRepositoryTest
-
-| 테스트명 | 대상 FR | 사전조건 | 검증 내용 | 상태 |
-|----------|---------|----------|-----------|------|
-| SaveAndFindAll_ReturnsSavedSample | 영속성 | 임시 디렉토리 생성 | save 후 findAll → 저장된 시료 1건 반환, id/name 일치 | GREEN |
-| SaveAndFindById_ReturnsCorrectSample | 영속성 | 임시 디렉토리 생성 | save 후 findById → 정확한 시료 반환, yield 값 일치 | GREEN |
-| FindById_NotFound_ReturnsNullopt | 영속성 | 빈 저장소 | 미존재 ID 조회 → nullopt 반환 | GREEN |
-| Remove_RemovesSample | 영속성 | 시료 1건 저장 | remove 후 findAll → 빈 목록 반환 | GREEN |
-| Save_Upsert_UpdatesExistingSample | 영속성 | 시료 1건 저장 | 동일 ID로 재저장 시 upsert — findAll 결과 1건, name/stock 갱신 확인 | GREEN |
-
-### OrderRepositoryTest
-
-| 테스트명 | 대상 FR | 사전조건 | 검증 내용 | 상태 |
-|----------|---------|----------|-----------|------|
-| SaveAndFindAll_ReturnsSavedOrder | 영속성 | 임시 디렉토리 생성 | save 후 findAll → 저장된 주문 1건, id/status 일치 | GREEN |
-| SaveAndFindById_ReturnsCorrectOrder | 영속성 | 임시 디렉토리 생성 | save 후 findById → 정확한 주문 반환, quantity 일치 | GREEN |
-| FindById_NotFound_ReturnsNullopt | 영속성 | 빈 저장소 | 미존재 ID 조회 → nullopt 반환 | GREEN |
-| Remove_RemovesOrder | 영속성 | 주문 1건 저장 | remove 후 findAll → 빈 목록 반환 | GREEN |
-| Save_Upsert_UpdatesExistingOrder | 영속성 | 주문 1건 저장 | 동일 ID로 status 변경 후 재저장 → findAll 1건, CONFIRMED 상태 확인 | GREEN |
-| Persistence_ReloadAfterSave_RetainsData | 영속성 | 주문 1건 저장 (PRODUCING) | 동일 경로로 새 인스턴스 생성(재로드) → status/producedQuantity/productionStartedAt 모두 일치 | GREEN |
+> **기준일**: 2026-06-12
+> **프레임워크**: Google Mock 1.11.0 (NuGet 패키지)
+> **범위**: 통합 테스트 전용 — 단위 테스트는 TDD 사이클에서 별도 관리
 
 ---
 
-## Phase 4. 시료 관리 (FR-010~012)
+## 1. 목표
 
-### SampleControllerTest
+단위 테스트(Controller + Mock)가 비즈니스 로직을 격리 검증하는 것과 달리,
+통합 테스트는 **실제 파일 I/O를 포함한 레이어 간 연동**을 검증한다.
 
-| 테스트명 | 대상 FR | 사전조건 | 검증 내용 | 상태 |
-|----------|---------|----------|-----------|------|
-| Register_YieldTooLow_ReturnsFalse | FR-010 | MockRepo 주입 | yield=0.009 → findById 호출 없이 false 반환 (수율 범위 검증 우선) | GREEN |
-| Register_YieldTooHigh_ReturnsFalse | FR-010 | MockRepo 주입 | yield=1.001 → findById 호출 없이 false 반환 | GREEN |
-| Register_YieldBoundary_Low_Succeeds | FR-010 | findById → nullopt | yield=0.01(하한 경계) → save 1회 호출, true 반환 | GREEN |
-| Register_YieldBoundary_High_Succeeds | FR-010 | findById → nullopt | yield=1.0(상한 경계) → save 1회 호출, true 반환 | GREEN |
-| Register_DuplicateId_ReturnsFalse | FR-010 | findById → 기존 시료 반환 | 중복 ID 등록 시도 → save 호출 없이 false 반환 | GREEN |
-| Register_Success_CallsSaveOnce | FR-010 | findById → nullopt | 정상 등록 → save 정확히 1회 호출, true 반환 | GREEN |
-| Register_Success_StockIsZero | FR-010 | findById → nullopt | 정상 등록 시 stock 필드 = 0으로 save 호출 확인 | GREEN |
-| GetAllSamples_ReturnsFindAllResult | FR-011 | findAll → 시료 1건 목록 | getAllSamples → findAll 결과 그대로 반환, id 일치 | GREEN |
-| SearchByName_DelegatesToRepository | FR-012 | findByName("반도체") → 시료 1건 | searchByName 호출 → findByName 위임, 결과 id 일치 | GREEN |
-| FindById_Found_ReturnsSample | FR-012 | findById → 시료 반환 | findById("S-001") → id/name 일치하는 optional 반환 | GREEN |
-| FindById_NotFound_ReturnsNullopt | FR-012 | findById → nullopt | findById("S-999") → nullopt 반환 | GREEN |
+| 검증 대상 | 설명 |
+|---|---|
+| JSON 직렬화·역직렬화 왕복 | 저장 후 재로드 시 타입·정밀도·인코딩 손실 없이 일치하는지 |
+| Repository → Controller 연동 | 실제 Repository 주입 시 비즈니스 로직이 파일에 올바르게 반영되는지 |
+| 상태 전이 영속성 | 주문 상태 전이가 JSON 파일에 정확히 기록되는지 |
+| 생산량 계산 + 파일 반영 | 타임스탬프 주입으로 경과 시간을 제어했을 때 재고·생산량 변경이 반영되는지 |
+| 재고 상태 집계 | 실 JSON 데이터 기반으로 SURPLUS / SHORTAGE / DEPLETED 판정이 올바른지 |
+| E2E 완전 흐름 | 시료 등록 → 주문 접수 → 승인/생산 → 출고까지 데이터 일관성 유지 여부 |
 
 ---
 
-## Phase 5. 주문 접수·승인·거절 (FR-020~024)
+## 2. 테스트 환경 설정
 
-### OrderControllerTest
+### 2-1. RepositoryTestFixture
 
-| 테스트명 | 대상 FR | 사전조건 | 검증 내용 | 상태 |
-|----------|---------|----------|-----------|------|
-| CreateOrder_UnknownSampleId_ReturnsFalse | FR-020 | findById("S-999") → nullopt | 미등록 시료 ID 주문 → save 호출 없이 false 반환 | GREEN |
-| CreateOrder_ValidSample_StatusReserved | FR-020 | 시료 존재, 기존 주문 없음 | 정상 주문 생성 → status=RESERVED 로 save 1회, true 반환 | GREEN |
-| CreateOrder_NoExistingOrders_IdIsO001 | FR-020 | 기존 주문 목록 비어 있음 | 첫 번째 주문의 id = "O-001" 확인 | GREEN |
-| CreateOrder_ExistingMaxO003_IdIsO004 | FR-020 | 기존 최대 순번 O-003 존재 | 다음 주문 id = "O-004" 확인 (순번 자동 증가) | GREEN |
-| GetPendingOrders_DelegatesToFindByStatus | FR-021 | findByStatus(RESERVED) → 1건 | getPendingOrders → RESERVED 목록 반환, id 일치 | GREEN |
-| ApproveOrder_NotFound_ReturnsFalse | FR-022 | findById("O-999") → nullopt | 미존재 주문 승인 → false 반환 | GREEN |
-| ApproveOrder_SufficientStock_BecomesConfirmed | FR-022 | stock=10, qty=5, 기존 활성 주문 없음 | 가용 재고 >= quantity → CONFIRMED 로 save, true 반환 | GREEN |
-| ApproveOrder_InsufficientStock_BecomesProducing | FR-022 | stock=3, qty=10, 기존 활성 주문 없음 | 가용 재고 < quantity → PRODUCING 으로 save, true 반환 | GREEN |
-| CalcProduction_Normal_CeilApplied | FR-023 | stock=3, qty=10, yield=0.9 | 부족분=7 → ceil(7/0.81)=9, targetProductionQuantity=9 저장 | GREEN |
-| CalcProduction_NegativeAvailable_UsesZero | FR-023 | stock=0, 기존 CONFIRMED qty=5, 신규 qty=3 | 가용 재고 음수 → max(0,−5)=0 클립 → shortage=3 → ceil(3/0.81)=4 저장 | GREEN |
-| CalcProduction_ZeroStock_FullOrderQty | FR-023 | stock=0, qty=5, 기존 주문 없음 | shortage=5 → ceil(5/0.81)=7, targetProductionQuantity=7 저장 | GREEN |
-| RejectOrder_NotFound_ReturnsFalse | FR-024 | findById("O-999") → nullopt | 미존재 주문 거절 → false 반환 | GREEN |
-| RejectOrder_StatusBecomesRejected | FR-024 | RESERVED 주문 존재 | rejectOrder → status=REJECTED 로 save, true 반환 | GREEN |
+모든 통합 테스트는 `RepositoryTestFixture`를 상속하여 파일 격리를 보장한다.
 
----
+```cpp
+// test/RepositoryTestFixture.h
+class RepositoryTestFixture : public ::testing::Test {
+protected:
+    std::string dataDir_;   // "test_data_temp/"
 
-## Phase 6. 모니터링 (FR-030~032)
+    void SetUp() override {
+        dataDir_ = "test_data_temp/";
+        std::filesystem::create_directories(dataDir_);
+    }
 
-### OrderControllerTest — 모니터링 추가
+    void TearDown() override {
+        std::filesystem::remove_all(dataDir_);
+    }
+};
+```
 
-| 테스트명 | 대상 FR | 사전조건 | 검증 내용 | 상태 |
-|----------|---------|----------|-----------|------|
-| GetOrderStats_VariousStatuses_CountsExcludeRejected | FR-030 | RESERVED×2, PRODUCING×1, CONFIRMED×1, RELEASE×1, REJECTED×2 | reserved=2, producing=1, confirmed=1, release=1 (REJECTED 집계 제외) | RED |
-| GetOrderStats_NoOrders_AllZero | FR-030 | 주문 목록 비어 있음 | 모든 카운트 = 0 | RED |
-| GetActiveOrders_ReturnsOnlyConfirmedAndProducing | FR-030 | RESERVED/CONFIRMED/PRODUCING/REJECTED/RELEASE 각 1건 | 결과 2건 — CONFIRMED·PRODUCING 만 포함 | RED |
+- `SetUp()`: 임시 디렉터리 `test_data_temp/` 생성
+- `TearDown()`: 디렉터리 및 하위 파일 전체 삭제
+- 각 테스트는 독립된 파일 공간에서 실행 → 테스트 간 상태 오염 없음
 
-### SampleControllerTest — 재고 상태 추가
+### 2-2. Repository 인스턴스 생성
 
-| 테스트명 | 대상 FR | 사전조건 | 검증 내용 | 상태 |
-|----------|---------|----------|-----------|------|
-| GetStockStatus_Surplus_WhenStockGteActiveQty | FR-032 | stock=10, CONFIRMED qty=5, PRODUCING qty=3 | activeQty=8, stock≥activeQty → StockStatus::SURPLUS | RED |
-| GetStockStatus_Shortage_WhenStockBetweenZeroAndActiveQty | FR-032 | stock=3, CONFIRMED qty=5, PRODUCING qty=3 | 0 < stock=3 < activeQty=8 → StockStatus::SHORTAGE | RED |
-| GetStockStatus_Depleted_WhenStockIsZero | FR-032 | stock=0, 활성 주문 없음 | stock=0 → StockStatus::DEPLETED | RED |
-| GetStockStatus_Surplus_WhenNoActiveOrders | FR-032 | stock=5, 활성 주문 없음 | activeQty=0, stock≥0 → StockStatus::SURPLUS | RED |
+```cpp
+SampleRepository sampleRepo(dataDir_ + "samples.json");
+OrderRepository  orderRepo(dataDir_ + "orders.json");
 
----
+// Controller에 실제 Repository 주입 (Mock 미사용)
+SampleController sampleCtrl(sampleRepo);
+OrderController  orderCtrl(sampleRepo, orderRepo);
+```
 
-## Phase 7. 생산라인 (FR-040~042) — 테스트 미작성
+### 2-3. 영속성 검증 패턴
 
-| 테스트명 | 대상 FR | 사전조건 | 검증 내용 | 상태 |
-|----------|---------|----------|-----------|------|
-| (미작성) delta 정상 계산 | FR-042 | 경과 시간 일부 진행 | delta = floor(경과시간/avgTime) − producedQuantity, delta > 0 시 stock/producedQuantity 갱신 | RED |
-| (미작성) 실 생산량 초과 방지 | FR-042 | 경과 시간 초과 | delta가 targetProductionQuantity 초과 불가 | RED |
-| (미작성) 총 생산시간 경과 시 CONFIRMED 전환 | FR-042 | totalProductionTime 이상 경과 | PRODUCING → CONFIRMED 자동 전환 | RED |
+JSON 영속성 확인 시 **새 인스턴스를 동일 경로로 다시 생성**하여 검증한다.
 
----
+```cpp
+// 1단계: 저장
+SampleRepository repo1(dataDir_ + "samples.json");
+repo1.save(sample);
 
-## Phase 8. 출고 처리 (FR-050~051) — 테스트 미작성
-
-| 테스트명 | 대상 FR | 사전조건 | 검증 내용 | 상태 |
-|----------|---------|----------|-----------|------|
-| (미작성) ReleaseOrder_BecomesRelease | FR-051 | CONFIRMED 주문 존재 | 출고 처리 → status=RELEASE 전환 확인 | RED |
-| (미작성) ReleaseOrder_DeductsStock | FR-051 | CONFIRMED 주문 존재, 재고 충분 | 출고 후 stock -= quantity 확인 | RED |
+// 2단계: 새 인스턴스로 재로드 후 검증
+SampleRepository repo2(dataDir_ + "samples.json");
+auto result = repo2.findById("S-001");
+ASSERT_TRUE(result.has_value());
+EXPECT_EQ(result->name, sample.name);
+```
 
 ---
 
-## 전체 진행 현황 요약
+## 3. 생산 시간 제어 전략
 
-| Phase | 내용 | 테스트 수 | GREEN | RED |
-|-------|------|-----------|-------|-----|
-| Phase 3 | Repository 통합 테스트 | 11 | 11 | 0 |
-| Phase 4 | 시료 관리 (FR-010~012) | 11 | 11 | 0 |
-| Phase 5 | 주문 접수·승인·거절 (FR-020~024) | 13 | 13 | 0 |
-| Phase 6 | 모니터링 (FR-030~032) | 7 | 0 | 7 |
-| Phase 7 | 생산라인 (FR-040~042) | 3 | 0 | 3 |
-| Phase 8 | 출고 처리 (FR-050~051) | 2 | 0 | 2 |
-| **합계** | | **47** | **35** | **12** |
+`OrderController::updateProduction(const std::string& now)` 은 현재 시각을 파라미터로 외부 주입받는다.
 
-> Phase 6의 RED 테스트는 코드가 작성되어 있으나 구현(`getOrderStats`, `getActiveOrders`, `getStockStatus`)이 완료되지 않은 상태입니다.  
-> Phase 7·8의 테스트는 아직 작성되지 않았습니다.
+- **프로덕션**: View가 `currentTimestamp()` 반환값을 전달
+- **테스트**: 고정 타임스탬프 문자열을 직접 전달 → 결정적(deterministic) 검증
+
+### 타임스탬프 형식
+
+```
+YYYY-MM-DD HH:MM:SS
+예) "2026-06-12 10:00:00"
+```
+
+### 경과 시간 계산 예시
+
+```
+productionStartedAt = "2026-06-12 08:00:00"
+now                 = "2026-06-12 10:30:00"
+elapsed             = 2.5시간
+
+avgProductionTime   = 1.0 h/개
+ceil(2.5 / 1.0)     = 3  →  총 생산량 = 3
+delta               = 3 - producedQuantity(현재값)
+```
+
+### 시나리오별 기대 결과
+
+| 시나리오 | startedAt | now | avgProductionTime | 기대 결과 |
+|---|---|---|---|---|
+| delta = 0 (진행 없음) | 10:00:00 | 10:30:00 | 2.0h | ceil(0.5/2.0)=1, delta=1 |
+| delta = 3 (중간 진행) | 08:00:00 | 10:30:00 | 1.0h | ceil(2.5/1.0)=3 |
+| target 클램프 | 00:00:00 | 20:00:00 | 1.0h, target=5 | ceil(20/1)=20 → 5로 클램프 |
+| 생산 완료 전환 | 08:00:00 | 14:00:01 | 2.0h, target=3 | 총 6h 경과 → CONFIRMED 전환 |
+
+---
+
+## 4. 통합 테스트 목록
+
+### 4-1. 시료 Repository
+
+| ID | 시나리오 | 대상 FR | 검증 포인트 | 상태 |
+|---|---|---|---|---|
+| IT-01a | 시료 저장 후 findAll 왕복 | FR-010 | 크기 1, id·name·yield·avgProductionTime 일치 | GREEN |
+| IT-01b | 시료 저장 후 findById 왕복 | FR-010 | `has_value()` = true, yield 소수점 정밀도 일치 | GREEN |
+| IT-01c | 존재하지 않는 ID 조회 | FR-012 | `has_value()` = false | GREEN |
+| IT-01d | 시료 삭제 후 목록 비어있음 | FR-010 | 빈 목록 반환 | GREEN |
+| IT-01e | 동일 ID 재저장 시 덮어쓰기 | FR-010 | 크기 1, stock = 10 | GREEN |
+| IT-01f | 이름 부분 일치 검색 왕복 | FR-012 | 2건 반환, 미일치 항목 미포함 | 미작성 |
+| IT-01g | 이름 검색 미일치 | FR-012 | 빈 목록 반환 | 미작성 |
+| IT-01h | 재기동 후 데이터 유지 | NFR: 영속성 | yield·stock 값 일치 | 미작성 |
+
+**사전 조건 상세**
+
+- IT-01f: "반도체시료A", "반도체시료B", "다른시료" 저장 후 `findByName("반도체")` 호출
+- IT-01g: "다른시료" 저장 후 `findByName("없는이름")` 호출
+- IT-01h: `save` 완료 후 동일 경로로 새 인스턴스 생성하여 `findById` 호출
+
+---
+
+### 4-2. 주문 Repository
+
+| ID | 시나리오 | 대상 FR | 검증 포인트 | 상태 |
+|---|---|---|---|---|
+| IT-02a | 주문 저장 후 findAll 왕복 | FR-020 | 크기 1, id·status·quantity 일치 | GREEN |
+| IT-02b | 주문 저장 후 findById 왕복 | FR-020 | `has_value()` = true | GREEN |
+| IT-02c | 존재하지 않는 주문 조회 | — | `has_value()` = false | GREEN |
+| IT-02d | 주문 삭제 확인 | — | 빈 목록 반환 | GREEN |
+| IT-02e | 상태 업데이트 영속성 | FR-022 | 크기 1, status = CONFIRMED | GREEN |
+| IT-02f | PRODUCING 주문 타임스탬프 왕복 | FR-042 | status·producedQuantity·productionStartedAt 모두 일치 | GREEN |
+| IT-02g | findByStatus — 상태별 필터 왕복 | FR-021, FR-050 | 2건 반환, 다른 상태 미포함 | 미작성 |
+| IT-02h | findBySampleId — 시료 ID 필터 왕복 | FR-020 | 2건 반환 | 미작성 |
+| IT-02i | findBySampleId — 미일치 | — | 빈 목록 반환 | 미작성 |
+
+**사전 조건 상세**
+
+- IT-02g: RESERVED 2건, CONFIRMED 1건 저장 후 `findByStatus(RESERVED)` 호출
+- IT-02h: S-001 주문 2건, S-002 주문 1건 저장 후 `findBySampleId("S-001")` 호출
+- IT-02i: S-001 주문만 저장 후 `findBySampleId("S-999")` 호출
+
+---
+
+### 4-3. 비즈니스 흐름
+
+| ID | 시나리오 | 대상 FR | 상태 |
+|---|---|---|---|
+| IT-03 | 주문 승인 — 재고 충분 → CONFIRMED 저장 | FR-022 | 미작성 |
+| IT-04 | 주문 승인 — 재고 부족 → PRODUCING + 생산량 계산 저장 | FR-022, FR-023 | 미작성 |
+| IT-05 | 생산 진행 시뮬레이션 — producedQuantity 증가 반영 | FR-042 | 미작성 |
+| IT-06 | 생산 완료 시뮬레이션 — PRODUCING → CONFIRMED 전환 저장 | FR-042 | 미작성 |
+| IT-07 | 출고 처리 — CONFIRMED → RELEASE + stock 감소 저장 | FR-051 | 미작성 |
+| IT-08 | 모니터링 — 다수 주문 상태별 집계 (JSON 파일 기반) | FR-030 | 미작성 |
+| IT-09 | 재고 상태 — 실 JSON 기반 SURPLUS / SHORTAGE / DEPLETED 확인 | FR-031, FR-032 | 미작성 |
+| IT-10 | 동일 시료 2개 주문 — 첫 번째 CONFIRMED 후 두 번째 승인 시 가용 재고 차감 검증 | FR-022, FR-031 | 미작성 |
+| IT-11 | 동일 시료 2개 주문 — 둘 다 재고 부족 → PRODUCING, targetProductionQuantity 독립 계산 검증 | FR-022, FR-023 | 미작성 |
+| IT-12 | 동일 시료 PRODUCING 2개 — updateProduction 호출 시 각 주문 생산량 독립 갱신 검증 | FR-042 | 미작성 |
+| IT-13 | 시료 A·B 각각 주문 — getStockStatus 조회 시 각 시료 상태 독립 계산 (activeQtyBySample 집계) 검증 | FR-031, FR-032 | 미작성 |
+| IT-14 | 시료 A 주문 출고 — 시료 A stock만 감소, 시료 B stock 영향 없음 검증 | FR-051 | 미작성 |
+
+**각 시나리오 상세**
+
+**IT-03** 재고 충분 승인
+- 사전 조건: S-001(stock=10), O-001(qty=5, RESERVED) JSON 저장
+- 실행: `OrderController::approveOrder("O-001")`
+- 검증: orders.json 재로드 → status = CONFIRMED, stock 변동 없음
+
+**IT-04** 재고 부족 승인
+- 사전 조건: S-001(stock=3, yield=0.9, avgTime=2.0h), O-001(qty=10, RESERVED) JSON 저장
+- 실행: `OrderController::approveOrder("O-001")`
+- 검증: status = PRODUCING, targetProductionQuantity = `ceil(7/0.81) = 9`, productionStartedAt 비어 있지 않음
+
+**IT-05** 생산 진행
+- 사전 조건: PRODUCING 주문(avgTime=1.0h, target=5, producedQty=0, startedAt="2026-06-12 08:00:00") 저장
+- 실행: `updateProduction("2026-06-12 10:30:00")`
+- 검증: producedQuantity = 3, stock += 3  // ceil(2.5/1.0)=3
+
+**IT-06** 생산 완료
+- 사전 조건: PRODUCING 주문(avgTime=2.0h, target=3, producedQty=0, startedAt="2026-06-12 08:00:00") 저장
+- 실행: `updateProduction("2026-06-12 14:00:01")` (총 생산시간 6h 경과)
+- 검증: status = CONFIRMED, producedQuantity = 3
+
+**IT-07** 출고 처리
+- 사전 조건: S-001(stock=10), O-001(qty=5, CONFIRMED) JSON 저장
+- 실행: `OrderController::releaseOrder("O-001")`
+- 검증: status = RELEASE, stock = 5
+
+**IT-08** 모니터링 집계
+- 사전 조건: RESERVED×2, PRODUCING×1, CONFIRMED×1, RELEASE×1, REJECTED×2 저장
+- 실행: `OrderController::getOrderStats()`
+- 검증: reserved=2, producing=1, confirmed=1, release=1 (REJECTED 제외)
+
+**IT-09** 재고 상태 판정
+- 실행: 실제 Repository 데이터로 `SampleController::getStockStatus()` 호출
+
+| ID | 케이스 | stock | 활성 주문 qty 합계 | 기대 결과 |
+|---|---|---|---|---|
+| IT-09a | 여유 | 10 | CONFIRMED(5) + PRODUCING(3) = 8 | SURPLUS |
+| IT-09b | 부족 | 3 | CONFIRMED(5) + PRODUCING(3) = 8 | SHORTAGE |
+| IT-09c | 고갈 | 0 | (무관) | DEPLETED |
+
+---
+
+**IT-10** 동일 시료 2개 주문 — 첫 번째 CONFIRMED 후 두 번째 승인 시 가용 재고 차감 검증
+- 사전 조건: S-001(stock=10), O-001(qty=6, RESERVED), O-002(qty=6, RESERVED) JSON 저장
+- 실행 1: `OrderController::approveOrder("O-001")` → O-001 status = CONFIRMED
+- 검증 1: orders.json 재로드 → O-001 status = CONFIRMED, S-001 stock = 10 (즉시 차감 없음)
+- 실행 2: `OrderController::approveOrder("O-002")`
+  - 가용 재고 = stock(10) − CONFIRMED 수량 합계(6) = 4 < qty(6) → 재고 부족
+- 검증 2: O-002 status = PRODUCING, `calcReservedQuantity("S-001")` = 6 (O-001 수량 포함)
+  - `targetProductionQuantity` = `ceil((6−4) / (0.9 × 0.9))` = `ceil(2/0.81)` = 3
+
+**IT-11** 동일 시료 2개 주문 — 둘 다 재고 부족 → PRODUCING, targetProductionQuantity 독립 계산 검증
+- 사전 조건: S-001(stock=2, yield=0.9, avgProductionTime=1.0h), O-001(qty=8, RESERVED), O-002(qty=5, RESERVED) JSON 저장
+- 실행 1: `OrderController::approveOrder("O-001")`
+  - 가용 재고 = 2 − 0 = 2 < 8 → 부족분 = 6, targetProductionQuantity = `ceil(6/0.81)` = 8
+- 검증 1: O-001 status = PRODUCING, targetProductionQuantity = 8, productionStartedAt 비어 있지 않음
+- 실행 2: `OrderController::approveOrder("O-002")`
+  - 가용 재고 = stock(2) − PRODUCING 수량 합계(8) = −6 → 0으로 클램프, 부족분 = 5
+  - targetProductionQuantity = `ceil(5/0.81)` = 7
+- 검증 2: O-002 status = PRODUCING, targetProductionQuantity = 7
+  - O-001의 targetProductionQuantity(8) 불변 확인 (독립 값)
+
+**IT-12** 동일 시료 PRODUCING 2개 — updateProduction 호출 시 front만 처리, queue는 대기 검증
+- 사전 조건:
+  - S-001(stock=0, avgProductionTime=1.0h)
+  - O-001(sampleId="S-001", qty=4, PRODUCING, target=4, producedQty=0, startedAt="2026-06-12 08:00:00") 저장
+  - O-002(sampleId="S-001", qty=6, PRODUCING, target=7, producedQty=0, startedAt="2026-06-12 09:00:00") 저장
+- 실행: `updateProduction("2026-06-12 11:00:00")`
+  - O-001(front) 기준 경과 = 3.0h → ceil(3.0/1.0) = 3, delta = 3
+  - O-002(queue) → FIFO 단일 생산라인 규칙으로 처리 대상 아님
+- 검증: orders.json 재로드
+  - O-001: producedQuantity = 3, status = PRODUCING (target=4 미도달)
+  - O-002: producedQuantity = 0, status = PRODUCING (front 아님, 미처리)
+  - samples.json 재로드: stock = 3 (0 + 3, O-002 미처리)
+
+**IT-13** 시료 A·B 각각 주문 — getStockStatus 조회 시 각 시료 상태 독립 계산 검증
+- 사전 조건:
+  - S-A(stock=10), O-A1(sampleId="S-A", qty=7, CONFIRMED), O-A2(sampleId="S-A", qty=2, PRODUCING) 저장
+    - S-A 활성 qty 합계 = 9 → 0 < stock(10) 이상 → SURPLUS (stock 10 ≥ 9)
+  - S-B(stock=3), O-B1(sampleId="S-B", qty=8, CONFIRMED) 저장
+    - S-B 활성 qty 합계 = 8 → stock(3) < 8 → SHORTAGE
+- 실행: `SampleController::getStockStatus()`
+- 검증:
+  - S-A 결과: SURPLUS (`activeQtyBySample["S-A"]` = 9, stock = 10 ≥ 9)
+  - S-B 결과: SHORTAGE (`activeQtyBySample["S-B"]` = 8, stock = 3 < 8)
+  - 두 시료의 집계가 서로 오염되지 않음
+
+**IT-14** 시료 A 주문 출고 — 시료 A stock만 감소, 시료 B stock 영향 없음 검증
+- 사전 조건:
+  - S-A(stock=10), O-A(sampleId="S-A", qty=4, CONFIRMED) 저장
+  - S-B(stock=7), O-B(sampleId="S-B", qty=3, CONFIRMED) 저장
+- 실행: `OrderController::releaseOrder("O-A")`
+- 검증:
+  - orders.json 재로드: O-A status = RELEASE
+  - samples.json 재로드: S-A stock = 6 (10 − 4), S-B stock = 7 (변동 없음)
+  - O-B status = CONFIRMED (변동 없음)
+
+---
+
+## 5. E2E 시나리오
+
+시료 등록 → 주문 접수 → 승인 → 출고까지 단일 픽스처에서 연속 실행하여
+레이어 간 데이터 일관성을 종단간으로 검증한다.
+
+---
+
+### E2E-01: 재고 충분 경로 (RESERVED → CONFIRMED → RELEASE)
+
+```
+[1] 시료 등록
+    S-001 (name="산화막시료", avgProductionTime=2.0, yield=0.9, stock=20) 저장
+    → samples.json 재로드: stock=20 확인
+
+[2] 주문 접수
+    OrderController::createOrder("S-001", "고객A", qty=10)
+    → orders.json 재로드: status=RESERVED, id="O-001" 확인
+
+[3] 승인 (가용 재고 20 >= qty 10)
+    OrderController::approveOrder("O-001")
+    → orders.json 재로드: status=CONFIRMED 확인
+    → samples.json 재로드: stock 변동 없음 확인
+
+[4] 출고 처리
+    OrderController::releaseOrder("O-001")
+    → orders.json 재로드: status=RELEASE 확인
+    → samples.json 재로드: stock=10 (20-10) 확인
+```
+
+---
+
+### E2E-02: 재고 부족 경로 (RESERVED → PRODUCING → CONFIRMED → RELEASE)
+
+```
+[1] 시료 등록
+    S-001 (avgProductionTime=1.0h, yield=0.9, stock=3) 저장
+
+[2] 주문 접수
+    OrderController::createOrder("S-001", "고객B", qty=10)
+    → orders.json 재로드: status=RESERVED 확인
+
+[3] 승인 (가용 재고 3 < qty 10)
+    OrderController::approveOrder("O-001")
+    → orders.json 재로드:
+        status = PRODUCING
+        targetProductionQuantity = ceil(7/0.81) = 9
+        productionStartedAt != "" 확인
+    → samples.json 재로드: stock=3 (즉시 차감 없음) 확인
+
+[4a] 생산 진행 (부분 완료)
+    updateProduction("T + 4.0h")  // ceil(4.0/1.0)=4, delta=4
+    → orders.json 재로드: producedQuantity=4, status=PRODUCING 유지 확인
+    → samples.json 재로드: stock=7 (3+4) 확인
+
+[4b] 생산 완료 (총 생산시간 경과)
+    updateProduction("T + 9.0h")  // 총 생산시간 9h 경과
+    → orders.json 재로드: status=CONFIRMED, producedQuantity=9 확인
+    → samples.json 재로드: stock=12 (3+9) 확인
+
+[5] 출고 처리
+    OrderController::releaseOrder("O-001")
+    → orders.json 재로드: status=RELEASE 확인
+    → samples.json 재로드: stock=2 (12-10) 확인
+```
+
+> `T`는 `productionStartedAt` 값이며, `updateProduction`에는 해당 시각에서 지정 시간만큼 경과한 타임스탬프 문자열을 직접 주입한다.
+
+---
+
+## 6. 테스트 커버리지 갭
+
+| 미커버 항목 | 이유 | 대응 방법 |
+|---|---|---|
+| View 레이어 (`MainView`) | `std::cin` / `std::cout` 의존, 자동화 불가 | Phase 10 수동 시나리오 체크리스트로 대체 |
+| `main.cpp` 객체 배선 | Controller·View·Repository 연결 코드 | Phase 9 수동 전체 흐름 확인 |
+| 한글 콘솔 출력 (`SetConsoleCP`) | Windows API, 터미널 환경 의존 | Windows 콘솔에서 수동 확인 |
+| 생산 대기 큐 UI (FR-040~041) | View 레이어 렌더링 | 수동 확인 대상 |
+| `generateOrderId()` 자릿수 오버플로 | O-NNN 3자리 패딩, 1000건 초과 시 O-1000 발생 | 과제 규모상 미발생 가능성 높아 미대응 |
+| 동시성 및 대용량 데이터 | 단일 사용자 콘솔 앱, 멀티스레드 없음 | 해당 없음 |

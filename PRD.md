@@ -112,13 +112,16 @@
 
 **FR-041** 생산 대기 큐를 표시한다.
 - 스케줄링 전략: **FIFO**
+- 현재 생산 중인 주문(front)은 제외하고 대기 중인 주문만 표시
 
 **FR-042** 모든 메뉴 진입 시 경과 시간을 체크하여 생산 상태를 갱신한다.
+- FIFO 단일 생산라인: 가장 먼저 시작된 주문(front) 1개만 처리
 - productionStartedAt 기준으로 경과 시간 계산
-- 총 생산량 = floor(경과시간 / avgProductionTime), 단 실 생산량 초과 불가
+- 총 생산량 = ceil(경과시간 / avgProductionTime), 단 실 생산량 초과 불가
 - delta = 총 생산량 - producedQuantity
 - delta > 0이면 재고 += delta, producedQuantity += delta
 - 총 생산시간 경과 시 자동으로 PRODUCING → CONFIRMED 전환
+- front 완료 시 다음 대기 주문의 productionStartedAt을 현재 시각으로 갱신
 
 ---
 
