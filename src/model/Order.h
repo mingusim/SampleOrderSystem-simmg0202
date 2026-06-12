@@ -1,4 +1,5 @@
 #pragma once
+#include "model/Sample.h"
 #include <string>
 
 enum class OrderStatus {
@@ -26,4 +27,10 @@ struct OrderStats {
     int producing = 0;
     int confirmed = 0;
     int release   = 0;
+};
+
+struct ProductionInfo {
+    Order  order;
+    Sample sample;
+    double totalProductionHours;  // avgProductionTime × targetProductionQuantity
 };

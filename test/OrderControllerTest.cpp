@@ -192,3 +192,103 @@ TEST_F(OrderControllerTest, GetActiveOrders_ReturnsOnlyConfirmedAndProducing) {
     EXPECT_TRUE(std::any_of(result.begin(), result.end(),
         [](const Order& o){ return o.status == OrderStatus::PRODUCING; }));
 }
+
+// FR-042: 경과 시간 < 1단위 → delta=0, save 없음
+TEST_F(OrderControllerTest, UpdateProduction_ElapsedLessThanOneUnit_NoDeltaNoSave) {
+    Order order = DummyDataGenerator::makeOrder(
+        "O-001", "S-001", "고객A", 5, OrderStatus::PRODUCING,
+        "2026-01-01 10:00:00", "2026-01-01 10:00:00", 0, 10);
+    EXPECT_CALL(mockOrderRepo_, findByStatus(OrderStatus::PRODUCING))
+        .WillOnce(Return(std::vector<Order>{order}));
+    EXPECT_CALL(mockOrderRepo_, save(_)).Times(0);
+    EXPECT_CALL(mockSampleRepo_, save(_)).Times(0);
+    controller_.updateProduction("2026-01-01 10:54:00");  // 0.9h 경과
+}
+
+// FR-042: 경과 2.5h, avgTime=1.0h → delta=2, stock+=2, producedQty=2
+TEST_F(OrderControllerTest, UpdateProduction_Elapsed2_5h_DeltaApplied) {
+    Order order = DummyDataGenerator::makeOrder(
+        "O-001", "S-001", "고객A", 5, OrderStatus::PRODUCING,
+        "2026-01-01 10:00:00", "2026-01-01 10:00:00", 0, 10);
+    Sample sample = DummyDataGenerator::makeSample("S-001", "시료", 1.0, 0.9, 5);
+    EXPECT_CALL(mockOrderRepo_, findByStatus(OrderStatus::PRODUCING))
+        .WillOnce(Return(std::vector<Order>{order}));
+    EXPECT_CALL(mockSampleRepo_, findById("S-001"))
+        .WillOnce(Return(std::optional<Sample>{sample}));
+    EXPECT_CALL(mockOrderRepo_, save(Field(&Order::producedQuantity, 2))).Times(1);
+    EXPECT_CALL(mockSampleRepo_, save(Field(&Sample::stock, 7))).Times(1);  // 5+2
+    controller_.updateProduction("2026-01-01 12:30:00");  // 2.5h 경과
+}
+
+// FR-042: floor(elapsed/avgTime) > targetQty → producedQty 클램프
+TEST_F(OrderControllerTest, UpdateProduction_DeltaExceedsRemaining_ClampedToTarget) {
+    Order order = DummyDataGenerator::makeOrder(
+        "O-001", "S-001", "고객A", 5, OrderStatus::PRODUCING,
+        "2026-01-01 10:00:00", "2026-01-01 10:00:00", 8, 10);
+    Sample sample = DummyDataGenerator::makeSample("S-001", "시료", 1.0, 0.9, 3);
+    EXPECT_CALL(mockOrderRepo_, findByStatus(OrderStatus::PRODUCING))
+        .WillOnce(Return(std::vector<Order>{order}));
+    EXPECT_CALL(mockSampleRepo_, findById("S-001"))
+        .WillOnce(Return(std::optional<Sample>{sample}));
+    // floor(12/1)=12 → capped to 10 → delta=2 (not 4)
+    EXPECT_CALL(mockOrderRepo_, save(Field(&Order::producedQuantity, 10))).Times(1);
+    EXPECT_CALL(mockSampleRepo_, save(Field(&Sample::stock, 5))).Times(1);  // 3+2
+    controller_.updateProduction("2026-01-01 22:00:00");  // 12h 경과
+}
+
+// FR-042: 총 생산시간 경과 → PRODUCING → CONFIRMED 전환
+TEST_F(OrderControllerTest, UpdateProduction_TotalTimeElapsed_BecomesConfirmed) {
+    Order order = DummyDataGenerator::makeOrder(
+        "O-001", "S-001", "고객A", 5, OrderStatus::PRODUCING,
+        "2026-01-01 10:00:00", "2026-01-01 10:00:00", 0, 10);
+    Sample sample = DummyDataGenerator::makeSample("S-001", "시료", 1.0, 0.9, 0);
+    EXPECT_CALL(mockOrderRepo_, findByStatus(OrderStatus::PRODUCING))
+        .WillOnce(Return(std::vector<Order>{order}));
+    EXPECT_CALL(mockSampleRepo_, findById("S-001"))
+        .WillOnce(Return(std::optional<Sample>{sample}));
+    // 총 생산시간=10h 경과 → producedQty==targetQty → CONFIRMED
+    EXPECT_CALL(mockOrderRepo_, save(Field(&Order::status, OrderStatus::CONFIRMED))).Times(1);
+    EXPECT_CALL(mockSampleRepo_, save(_)).Times(1);
+    controller_.updateProduction("2026-01-01 20:00:00");  // 10h 경과
+}
+
+// FR-040: PRODUCING 주문 있음 → ProductionInfo 반환
+TEST_F(OrderControllerTest, GetCurrentProduction_HasProducing_ReturnsProductionInfo) {
+    Order order = DummyDataGenerator::makeOrder(
+        "O-001", "S-001", "고객A", 5, OrderStatus::PRODUCING,
+        "2026-01-01 10:00:00", "2026-01-01 10:00:00", 0, 10);
+    Sample sample = DummyDataGenerator::makeSample("S-001", "시료", 1.0, 0.9, 0);
+    EXPECT_CALL(mockOrderRepo_, findByStatus(OrderStatus::PRODUCING))
+        .WillOnce(Return(std::vector<Order>{order}));
+    EXPECT_CALL(mockSampleRepo_, findById("S-001"))
+        .WillOnce(Return(std::optional<Sample>{sample}));
+    const auto result = controller_.getCurrentProduction();
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ("O-001", result->order.id);
+    EXPECT_DOUBLE_EQ(10.0, result->totalProductionHours);  // 1.0 × 10
+}
+
+// FR-040: PRODUCING 주문 없음 → nullopt 반환
+TEST_F(OrderControllerTest, GetCurrentProduction_NoProducing_ReturnsNullopt) {
+    EXPECT_CALL(mockOrderRepo_, findByStatus(OrderStatus::PRODUCING))
+        .WillOnce(Return(std::vector<Order>{}));
+    const auto result = controller_.getCurrentProduction();
+    EXPECT_FALSE(result.has_value());
+}
+
+// FR-041: PRODUCING 주문 여러 개 → 전체 반환
+TEST_F(OrderControllerTest, GetProductionQueue_MultipleProducing_ReturnsAll) {
+    Order o1 = DummyDataGenerator::makeOrder(
+        "O-001", "S-001", "고객A", 5, OrderStatus::PRODUCING,
+        "2026-01-01 10:00:00", "2026-01-01 10:00:00", 0, 10);
+    Order o2 = DummyDataGenerator::makeOrder(
+        "O-002", "S-001", "고객B", 3, OrderStatus::PRODUCING,
+        "2026-01-01 10:00:00", "2026-01-01 11:00:00", 0, 8);
+    Sample sample = DummyDataGenerator::makeSample("S-001", "시료", 1.0, 0.9, 0);
+    EXPECT_CALL(mockOrderRepo_, findByStatus(OrderStatus::PRODUCING))
+        .WillOnce(Return(std::vector<Order>{o1, o2}));
+    EXPECT_CALL(mockSampleRepo_, findById("S-001"))
+        .WillRepeatedly(Return(std::optional<Sample>{sample}));
+    const auto result = controller_.getProductionQueue();
+    EXPECT_EQ(2u, result.size());
+}

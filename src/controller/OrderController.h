@@ -2,6 +2,7 @@
 #include "model/Order.h"
 #include "repository/ISampleRepository.h"
 #include "repository/IOrderRepository.h"
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -16,6 +17,9 @@ public:
     OrderStats getOrderStats();
     std::vector<Order> getActiveOrders();
     std::unordered_map<std::string, int> getActiveQtyBySample();
+    void updateProduction(const std::string& now);
+    std::optional<ProductionInfo> getCurrentProduction();
+    std::vector<ProductionInfo> getProductionQueue();
 
 private:
     ISampleRepository& sampleRepo_;

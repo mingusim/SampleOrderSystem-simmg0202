@@ -202,12 +202,12 @@ struct ProductionInfo {
 ```
 
 **[RED]**
-- [ ] `model/Order.h` — `ProductionInfo` 구조체 추가
-- [ ] `OrderController` 신규 메서드 선언
+- [x] `model/Order.h` — `ProductionInfo` 구조체 추가
+- [x] `OrderController` 신규 메서드 선언
   - `void updateProduction(const std::string& now)`
   - `std::optional<ProductionInfo> getCurrentProduction()`
   - `std::vector<ProductionInfo> getProductionQueue()`
-- [ ] `OrderControllerTest` 생산라인 테스트 추가 (7개)
+- [x] `OrderControllerTest` 생산라인 테스트 추가 (7개)
   - FR-042: 경과 시간 < 1단위 → delta=0, save 없음
   - FR-042: 경과 시간 = 2.5h, avgTime=1.0h → delta=2, stock+=2, producedQty+=2
   - FR-042: delta가 targetQty 초과 → targetQty로 클램프
@@ -215,7 +215,7 @@ struct ProductionInfo {
   - FR-040: PRODUCING 주문 있음 → getCurrentProduction 반환
   - FR-040: PRODUCING 주문 없음 → nullopt 반환
   - FR-041: PRODUCING 주문 여러 개 → getProductionQueue 전체 반환
-- [ ] 빌드·실행 → 테스트 실패(링커 에러) 확인
+- [x] 빌드·실행 → 테스트 실패(링커 에러) 확인
 
 → **사용자 리뷰 후 커밋**
 
