@@ -29,13 +29,13 @@
 
 ## Phase 1. 프로젝트 골격
 
-- [ ] `src/` 디렉토리 구조 생성 (model / controller / repository / view)
-- [ ] `data/` 디렉토리 자동 생성 코드 (`std::filesystem::create_directories`)
-- [ ] `main.cpp` 진입부 작성 (한글 콘솔 출력 설정)
-- [ ] nlohmann/json 라이브러리 vcxproj에 연동
-- [ ] 테스트 프로젝트 vcxproj 생성 — gmock 1.11.0 NuGet 연동, `/utf-8` 옵션 적용
-- [ ] `test/DummyDataGenerator.h` 작성 — 테스트용 Sample / Order 객체 생성 헬퍼
-- [ ] 빌드 정상 확인 (메인 + 테스트 프로젝트 모두)
+- [x] `src/` 디렉토리 구조 생성 (model / controller / repository / view)
+- [x] `data/` 디렉토리 자동 생성 코드 (`std::filesystem::create_directories`)
+- [x] `main.cpp` 진입부 작성 (한글 콘솔 출력 설정)
+- [x] nlohmann/json 라이브러리 vcxproj에 연동
+- [x] 테스트 프로젝트 vcxproj 생성 — gmock 1.11.0 NuGet 연동, `/utf-8` 옵션 적용
+- [x] `test/DummyDataGenerator.h` 작성 — 테스트용 Sample / Order 객체 생성 헬퍼
+- [x] 빌드 정상 확인 (메인 + 테스트 프로젝트 모두)
 
 ---
 

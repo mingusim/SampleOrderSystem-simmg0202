@@ -4,4 +4,5 @@
     <Platform Name="x86" />
   </Configurations>
   <Project Path="SampleOrderSystem-simmg0202.vcxproj" Id="b3828fcd-c5c2-47b2-a92e-f5ac24bbda9c" />
+  <Project Path="test\SampleOrderSystem-tests.vcxproj" Id="89d546e8-2d0d-4a70-9d83-150e2f3495c9" />
 </Solution>
