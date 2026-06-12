@@ -159,6 +159,7 @@
     <ClInclude Include="src\controller\SampleController.h" />
     <ClInclude Include="src\controller\OrderController.h" />
     <ClInclude Include="src\view\MainView.h" />
+    <ClInclude Include="src\utils\TimeUtils.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\main.cpp" />

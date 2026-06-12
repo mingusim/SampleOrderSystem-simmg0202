@@ -1,25 +1,9 @@
 #include "view/MainView.h"
-#include <chrono>
-#include <ctime>
+#include "utils/TimeUtils.h"
 #include <iostream>
 #include <iomanip>
-#include <sstream>
 #include <string>
 #include <limits>
-
-static std::string currentTimestamp() {
-    auto now = std::chrono::system_clock::now();
-    auto t   = std::chrono::system_clock::to_time_t(now);
-    std::tm tm{};
-#ifdef _WIN32
-    localtime_s(&tm, &t);
-#else
-    localtime_r(&t, &tm);
-#endif
-    std::ostringstream oss;
-    oss << std::put_time(&tm, "%Y-%m-%d %H:%M:%S");
-    return oss.str();
-}
 
 static std::string statusLabel(OrderStatus s) {
     switch (s) {
@@ -44,7 +28,7 @@ int MainView::readMenuChoice() {
 
 void MainView::run() {
     while (true) {
-        orderCtrl_.updateProduction(currentTimestamp());  // FR-042
+        orderCtrl_.updateProduction(TimeUtils::currentTimestamp());  // FR-042
         showMainMenu();
         switch (readMenuChoice()) {
             case 1: handleSampleMenu();      break;

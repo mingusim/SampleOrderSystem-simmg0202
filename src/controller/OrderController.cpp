@@ -1,36 +1,20 @@
 #include "controller/OrderController.h"
+#include "utils/TimeUtils.h"
 #include <algorithm>
-#include <chrono>
 #include <cmath>
-#include <ctime>
 #include <iomanip>
 #include <sstream>
 #include <unordered_map>
 
 static constexpr std::string_view kOrderIdPrefix = "O-";
 
-static double elapsedHours(const std::string& from, const std::string& to) {
-    auto parse = [](const std::string& s) -> std::time_t {
-        std::tm tm{};
-        std::istringstream ss(s);
-        ss >> std::get_time(&tm, "%Y-%m-%d %H:%M:%S");
-        return std::mktime(&tm);
-    };
-    return std::difftime(parse(to), parse(from)) / 3600.0;
+static bool orderByProductionStart(const Order& a, const Order& b) {
+    return a.productionStartedAt < b.productionStartedAt;
 }
 
-static std::string currentTimestamp() {
-    auto now = std::chrono::system_clock::now();
-    auto t   = std::chrono::system_clock::to_time_t(now);
-    std::tm tm{};
-#ifdef _WIN32
-    localtime_s(&tm, &t);
-#else
-    localtime_r(&t, &tm);
-#endif
-    std::ostringstream oss;
-    oss << std::put_time(&tm, "%Y-%m-%d %H:%M:%S");
-    return oss.str();
+static std::vector<Order> sortedProducing(std::vector<Order> orders) {
+    std::sort(orders.begin(), orders.end(), orderByProductionStart);
+    return orders;
 }
 
 std::string OrderController::generateOrderId() {
@@ -63,7 +47,7 @@ void OrderController::transitionToProducing(Order& order, const Sample& sample, 
     const int shortage = order.quantity - std::max(0, available);
     order.targetProductionQuantity = static_cast<int>(
         std::ceil(static_cast<double>(shortage) / (sample.yield * 0.9)));
-    order.productionStartedAt = currentTimestamp();
+    order.productionStartedAt = TimeUtils::currentTimestamp();
     order.status = OrderStatus::PRODUCING;
 }
 
@@ -79,7 +63,7 @@ bool OrderController::createOrder(const std::string& sampleId,
     order.customerName           = customerName;
     order.quantity               = quantity;
     order.status                 = OrderStatus::RESERVED;
-    order.createdAt              = currentTimestamp();
+    order.createdAt              = TimeUtils::currentTimestamp();
     order.productionStartedAt    = "";
     order.producedQuantity       = 0;
     order.targetProductionQuantity = 0;
@@ -154,7 +138,7 @@ void OrderController::updateProduction(const std::string& now) {
         if (!optSample) continue;
         Sample sample = *optSample;
 
-        const double elapsed = elapsedHours(order.productionStartedAt, now);
+        const double elapsed = TimeUtils::elapsedHours(order.productionStartedAt, now);
         const int cumulative = static_cast<int>(std::floor(elapsed / sample.avgProductionTime));
         const int totalProduced = std::min(cumulative, order.targetProductionQuantity);
         const int delta = totalProduced - order.producedQuantity;
@@ -173,13 +157,8 @@ void OrderController::updateProduction(const std::string& now) {
 }
 
 std::optional<ProductionInfo> OrderController::getCurrentProduction() {
-    auto producing = orderRepo_.findByStatus(OrderStatus::PRODUCING);
+    auto producing = sortedProducing(orderRepo_.findByStatus(OrderStatus::PRODUCING));
     if (producing.empty()) return std::nullopt;
-
-    std::sort(producing.begin(), producing.end(),
-        [](const Order& a, const Order& b) {
-            return a.productionStartedAt < b.productionStartedAt;
-        });
 
     const Order& order = producing.front();
     auto optSample = sampleRepo_.findById(order.sampleId);
@@ -193,11 +172,7 @@ std::optional<ProductionInfo> OrderController::getCurrentProduction() {
 }
 
 std::vector<ProductionInfo> OrderController::getProductionQueue() {
-    auto producing = orderRepo_.findByStatus(OrderStatus::PRODUCING);
-    std::sort(producing.begin(), producing.end(),
-        [](const Order& a, const Order& b) {
-            return a.productionStartedAt < b.productionStartedAt;
-        });
+    const auto producing = sortedProducing(orderRepo_.findByStatus(OrderStatus::PRODUCING));
 
     std::vector<ProductionInfo> result;
     for (const auto& order : producing) {
