@@ -41,9 +41,9 @@
 
 ## Phase 2. Model 정의
 
-- [ ] `model/Sample.h` — id, name, avgProductionTime, yield, stock(초기값 0)
-- [ ] `model/Order.h` — id, sampleId, customerName, quantity, status, createdAt, productionStartedAt, producedQuantity(초기값 0)
-- [ ] `OrderStatus` enum 정의 (RESERVED / REJECTED / PRODUCING / CONFIRMED / RELEASE)
+- [x] `model/Sample.h` — id, name, avgProductionTime, yield, stock(초기값 0)
+- [x] `model/Order.h` — id, sampleId, customerName, quantity, status, createdAt, productionStartedAt, producedQuantity(초기값 0)
+- [x] `OrderStatus` enum 정의 (RESERVED / REJECTED / PRODUCING / CONFIRMED / RELEASE)
 
 ---
 

@@ -146,6 +146,10 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\model\Sample.h" />
+    <ClInclude Include="src\model\Order.h" />
+  </ItemGroup>
+  <ItemGroup>
     <ClCompile Include="src\main.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
