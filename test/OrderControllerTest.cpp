@@ -2,18 +2,12 @@
 #include <gmock/gmock.h>
 #include "MockSampleRepository.h"
 #include "MockOrderRepository.h"
+#include "DummyDataGenerator.h"
 #include "controller/OrderController.h"
 
 using ::testing::Return;
 using ::testing::Field;
 using ::testing::_;
-
-namespace {
-    Order makeReservedOrder(const std::string& id, const std::string& sampleId, int qty) {
-        return Order{id, sampleId, "고객A", qty, OrderStatus::RESERVED,
-                     "2026-06-12 00:00:00", "", 0, 0};
-    }
-}
 
 class OrderControllerTest : public ::testing::Test {
 protected:
@@ -51,8 +45,8 @@ TEST_F(OrderControllerTest, CreateOrder_NoExistingOrders_IdIsO001) {
 TEST_F(OrderControllerTest, CreateOrder_ExistingMaxO003_IdIsO004) {
     Sample s{"S-001", "시료", 1.0, 0.9, 10};
     std::vector<Order> existing = {
-        makeReservedOrder("O-003", "S-001", 2),
-        makeReservedOrder("O-001", "S-001", 1)
+        DummyDataGenerator::makeOrder("O-003", "S-001", "테스트고객", 2),
+        DummyDataGenerator::makeOrder("O-001", "S-001", "테스트고객", 1)
     };
     EXPECT_CALL(mockSampleRepo_, findById("S-001")).WillOnce(Return(std::optional<Sample>{s}));
     EXPECT_CALL(mockOrderRepo_, findAll()).WillOnce(Return(existing));
@@ -62,7 +56,7 @@ TEST_F(OrderControllerTest, CreateOrder_ExistingMaxO003_IdIsO004) {
 
 // FR-021: RESERVED 주문 목록 반환
 TEST_F(OrderControllerTest, GetPendingOrders_DelegatesToFindByStatus) {
-    std::vector<Order> reserved = { makeReservedOrder("O-001", "S-001", 5) };
+    std::vector<Order> reserved = { DummyDataGenerator::makeOrder("O-001") };
     EXPECT_CALL(mockOrderRepo_, findByStatus(OrderStatus::RESERVED)).WillOnce(Return(reserved));
     auto result = controller_.getPendingOrders();
     ASSERT_EQ(1u, result.size());
@@ -77,7 +71,7 @@ TEST_F(OrderControllerTest, ApproveOrder_NotFound_ReturnsFalse) {
 
 // FR-022: 가용 재고 >= quantity → CONFIRMED
 TEST_F(OrderControllerTest, ApproveOrder_SufficientStock_BecomesConfirmed) {
-    Order  order  = makeReservedOrder("O-001", "S-001", 5);
+    Order  order  = DummyDataGenerator::makeOrder("O-001", "S-001", "테스트고객", 5);
     Sample sample{"S-001", "시료", 1.0, 0.9, 10};
     EXPECT_CALL(mockOrderRepo_,  findById("O-001")).WillOnce(Return(std::optional<Order>{order}));
     EXPECT_CALL(mockSampleRepo_, findById("S-001")).WillOnce(Return(std::optional<Sample>{sample}));
@@ -88,7 +82,7 @@ TEST_F(OrderControllerTest, ApproveOrder_SufficientStock_BecomesConfirmed) {
 
 // FR-022: 가용 재고 < quantity → PRODUCING
 TEST_F(OrderControllerTest, ApproveOrder_InsufficientStock_BecomesProducing) {
-    Order  order  = makeReservedOrder("O-001", "S-001", 10);
+    Order  order  = DummyDataGenerator::makeOrder("O-001", "S-001", "테스트고객", 10);
     Sample sample{"S-001", "시료", 1.0, 0.9, 3};
     EXPECT_CALL(mockOrderRepo_,  findById("O-001")).WillOnce(Return(std::optional<Order>{order}));
     EXPECT_CALL(mockSampleRepo_, findById("S-001")).WillOnce(Return(std::optional<Sample>{sample}));
@@ -100,7 +94,7 @@ TEST_F(OrderControllerTest, ApproveOrder_InsufficientStock_BecomesProducing) {
 // FR-023: 정상 케이스 — ceil 검증
 // stock=3, qty=10, yield=0.9 → available=3, shortage=7 → ceil(7/0.81)=9
 TEST_F(OrderControllerTest, CalcProduction_Normal_CeilApplied) {
-    Order  order  = makeReservedOrder("O-001", "S-001", 10);
+    Order  order  = DummyDataGenerator::makeOrder("O-001", "S-001", "테스트고객", 10);
     Sample sample{"S-001", "시료", 1.0, 0.9, 3};
     EXPECT_CALL(mockOrderRepo_,  findById("O-001")).WillOnce(Return(std::optional<Order>{order}));
     EXPECT_CALL(mockSampleRepo_, findById("S-001")).WillOnce(Return(std::optional<Sample>{sample}));
@@ -113,10 +107,9 @@ TEST_F(OrderControllerTest, CalcProduction_Normal_CeilApplied) {
 // stock=0, 기존 CONFIRMED qty=5, 신규 qty=3
 // available=-5 → max(0,-5)=0 → shortage=3 → ceil(3/0.81)=4
 TEST_F(OrderControllerTest, CalcProduction_NegativeAvailable_UsesZero) {
-    Order  order    = makeReservedOrder("O-001", "S-001", 3);
+    Order  order    = DummyDataGenerator::makeOrder("O-001", "S-001", "테스트고객", 3);
     Sample sample{"S-001", "시료", 1.0, 0.9, 0};
-    Order  existing{"O-000", "S-001", "고객B", 5, OrderStatus::CONFIRMED,
-                    "2026-06-12 00:00:00", "", 0, 0};
+    Order  existing = DummyDataGenerator::makeOrder("O-000", "S-001", "고객B", 5, OrderStatus::CONFIRMED);
     EXPECT_CALL(mockOrderRepo_,  findById("O-001")).WillOnce(Return(std::optional<Order>{order}));
     EXPECT_CALL(mockSampleRepo_, findById("S-001")).WillOnce(Return(std::optional<Sample>{sample}));
     EXPECT_CALL(mockOrderRepo_,  findBySampleId("S-001")).WillOnce(Return(std::vector<Order>{existing}));
@@ -127,7 +120,7 @@ TEST_F(OrderControllerTest, CalcProduction_NegativeAvailable_UsesZero) {
 // FR-023: 재고 0, 다른 주문 없음 → 전체 주문 수량이 부족분
 // stock=0, qty=5, yield=0.9 → shortage=5 → ceil(5/0.81)=7
 TEST_F(OrderControllerTest, CalcProduction_ZeroStock_FullOrderQty) {
-    Order  order  = makeReservedOrder("O-001", "S-001", 5);
+    Order  order  = DummyDataGenerator::makeOrder("O-001", "S-001", "테스트고객", 5);
     Sample sample{"S-001", "시료", 1.0, 0.9, 0};
     EXPECT_CALL(mockOrderRepo_,  findById("O-001")).WillOnce(Return(std::optional<Order>{order}));
     EXPECT_CALL(mockSampleRepo_, findById("S-001")).WillOnce(Return(std::optional<Sample>{sample}));
@@ -144,8 +137,9 @@ TEST_F(OrderControllerTest, RejectOrder_NotFound_ReturnsFalse) {
 
 // FR-024: RESERVED → REJECTED 전환
 TEST_F(OrderControllerTest, RejectOrder_StatusBecomesRejected) {
-    Order order = makeReservedOrder("O-001", "S-001", 5);
+    Order order = DummyDataGenerator::makeOrder("O-001");
     EXPECT_CALL(mockOrderRepo_, findById("O-001")).WillOnce(Return(std::optional<Order>{order}));
     EXPECT_CALL(mockOrderRepo_, save(Field(&Order::status, OrderStatus::REJECTED))).Times(1);
     EXPECT_TRUE(controller_.rejectOrder("O-001"));
 }
+

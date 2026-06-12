@@ -5,9 +5,9 @@
 class SampleRepository : public ISampleRepository {
 public:
     explicit SampleRepository(const std::string& filePath);
-    std::optional<Sample> findById(const std::string& id) override;
-    std::vector<Sample> findAll() override;
-    std::vector<Sample> findByName(const std::string& partialName) override;
+    std::optional<Sample> findById(const std::string& id) const override;
+    std::vector<Sample> findAll() const override;
+    std::vector<Sample> findByName(const std::string& partialName) const override;
     void save(const Sample& sample) override;
     void remove(const std::string& id) override;
 

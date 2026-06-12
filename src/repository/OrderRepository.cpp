@@ -74,7 +74,7 @@ void OrderRepository::persist(const std::vector<Order>& orders) const {
     f << json(orders).dump(2);
 }
 
-std::optional<Order> OrderRepository::findById(const std::string& id) {
+std::optional<Order> OrderRepository::findById(const std::string& id) const {
     auto orders = load();
     auto it = std::find_if(orders.begin(), orders.end(),
         [&](const Order& o) { return o.id == id; });
@@ -82,11 +82,11 @@ std::optional<Order> OrderRepository::findById(const std::string& id) {
     return *it;
 }
 
-std::vector<Order> OrderRepository::findAll() {
+std::vector<Order> OrderRepository::findAll() const {
     return load();
 }
 
-std::vector<Order> OrderRepository::findByStatus(OrderStatus status) {
+std::vector<Order> OrderRepository::findByStatus(OrderStatus status) const {
     auto orders = load();
     std::vector<Order> result;
     std::copy_if(orders.begin(), orders.end(), std::back_inserter(result),
@@ -94,7 +94,7 @@ std::vector<Order> OrderRepository::findByStatus(OrderStatus status) {
     return result;
 }
 
-std::vector<Order> OrderRepository::findBySampleId(const std::string& sampleId) {
+std::vector<Order> OrderRepository::findBySampleId(const std::string& sampleId) const {
     auto orders = load();
     std::vector<Order> result;
     std::copy_if(orders.begin(), orders.end(), std::back_inserter(result),

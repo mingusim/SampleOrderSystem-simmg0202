@@ -6,11 +6,17 @@
 #include <iomanip>
 #include <sstream>
 
+static constexpr std::string_view kOrderIdPrefix = "O-";
+
 static std::string currentTimestamp() {
     auto now = std::chrono::system_clock::now();
     auto t   = std::chrono::system_clock::to_time_t(now);
     std::tm tm{};
+#ifdef _WIN32
     localtime_s(&tm, &t);
+#else
+    localtime_r(&t, &tm);
+#endif
     std::ostringstream oss;
     oss << std::put_time(&tm, "%Y-%m-%d %H:%M:%S");
     return oss.str();
@@ -19,14 +25,35 @@ static std::string currentTimestamp() {
 std::string OrderController::generateOrderId() {
     int maxNum = 0;
     for (const auto& o : orderRepo_.findAll()) {
-        if (o.id.size() > 2 && o.id.substr(0, 2) == "O-") {
-            try { maxNum = std::max(maxNum, std::stoi(o.id.substr(2))); }
+        if (o.id.size() > kOrderIdPrefix.size() &&
+                o.id.substr(0, kOrderIdPrefix.size()) == kOrderIdPrefix) {
+            try { maxNum = std::max(maxNum, std::stoi(o.id.substr(kOrderIdPrefix.size()))); }
             catch (...) {}
         }
     }
     std::ostringstream oss;
-    oss << "O-" << std::setw(3) << std::setfill('0') << (maxNum + 1);
+    oss << kOrderIdPrefix << std::setw(3) << std::setfill('0') << (maxNum + 1);
     return oss.str();
+}
+
+int OrderController::calcReservedQuantity(const std::string& sampleId,
+                                           const std::string& excludeOrderId) const {
+    int qty = 0;
+    for (const auto& o : orderRepo_.findBySampleId(sampleId)) {
+        if ((o.status == OrderStatus::CONFIRMED || o.status == OrderStatus::PRODUCING)
+                && o.id != excludeOrderId) {
+            qty += o.quantity;
+        }
+    }
+    return qty;
+}
+
+void OrderController::transitionToProducing(Order& order, const Sample& sample, int available) {
+    const int shortage = order.quantity - std::max(0, available);
+    order.targetProductionQuantity = static_cast<int>(
+        std::ceil(static_cast<double>(shortage) / (sample.yield * 0.9)));
+    order.productionStartedAt = currentTimestamp();
+    order.status = OrderStatus::PRODUCING;
 }
 
 OrderController::OrderController(ISampleRepository& sampleRepo, IOrderRepository& orderRepo)
@@ -62,24 +89,12 @@ bool OrderController::approveOrder(const std::string& orderId) {
     if (!optSample) return false;
     const Sample& sample = *optSample;
 
-    int reservedQty = 0;
-    for (const auto& o : orderRepo_.findBySampleId(order.sampleId)) {
-        if ((o.status == OrderStatus::CONFIRMED || o.status == OrderStatus::PRODUCING)
-                && o.id != order.id) {
-            reservedQty += o.quantity;
-        }
-    }
-    const int available = sample.stock - reservedQty;
+    const int available = sample.stock - calcReservedQuantity(order.sampleId, order.id);
 
-    if (available >= order.quantity) {
+    if (available >= order.quantity)
         order.status = OrderStatus::CONFIRMED;
-    } else {
-        const int shortage = order.quantity - std::max(0, available);
-        order.targetProductionQuantity = static_cast<int>(
-            std::ceil(static_cast<double>(shortage) / (sample.yield * 0.9)));
-        order.productionStartedAt = currentTimestamp();
-        order.status = OrderStatus::PRODUCING;
-    }
+    else
+        transitionToProducing(order, sample, available);
 
     orderRepo_.save(order);
     return true;

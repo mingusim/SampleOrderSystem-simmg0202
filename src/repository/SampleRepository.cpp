@@ -47,7 +47,7 @@ void SampleRepository::persist(const std::vector<Sample>& samples) const {
     f << json(samples).dump(2);
 }
 
-std::optional<Sample> SampleRepository::findById(const std::string& id) {
+std::optional<Sample> SampleRepository::findById(const std::string& id) const {
     auto samples = load();
     auto it = std::find_if(samples.begin(), samples.end(),
         [&](const Sample& s) { return s.id == id; });
@@ -55,11 +55,11 @@ std::optional<Sample> SampleRepository::findById(const std::string& id) {
     return *it;
 }
 
-std::vector<Sample> SampleRepository::findAll() {
+std::vector<Sample> SampleRepository::findAll() const {
     return load();
 }
 
-std::vector<Sample> SampleRepository::findByName(const std::string& partialName) {
+std::vector<Sample> SampleRepository::findByName(const std::string& partialName) const {
     auto samples = load();
     std::vector<Sample> result;
     std::copy_if(samples.begin(), samples.end(), std::back_inserter(result),

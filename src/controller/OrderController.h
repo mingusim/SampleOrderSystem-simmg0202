@@ -18,4 +18,6 @@ private:
     IOrderRepository&  orderRepo_;
 
     std::string generateOrderId();
+    int calcReservedQuantity(const std::string& sampleId, const std::string& excludeOrderId) const;
+    void transitionToProducing(Order& order, const Sample& sample, int available);
 };
