@@ -9,6 +9,7 @@ public:
 private:
     SampleController& sampleCtrl_;
 
+    static int readMenuChoice();
     void showMainMenu();
     void handleSampleMenu();
     void printSampleList(const std::vector<Sample>& samples);

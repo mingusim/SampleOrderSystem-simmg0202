@@ -7,13 +7,17 @@
 MainView::MainView(SampleController& sampleController)
     : sampleCtrl_(sampleController) {}
 
-void MainView::run() {
+int MainView::readMenuChoice() {
     int choice = 0;
+    std::cin >> choice;
+    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+    return choice;
+}
+
+void MainView::run() {
     while (true) {
         showMainMenu();
-        std::cin >> choice;
-        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-        switch (choice) {
+        switch (readMenuChoice()) {
             case 1: handleSampleMenu(); break;
             case 0: return;
             default: std::cout << "잘못된 입력입니다.\n";
@@ -29,7 +33,6 @@ void MainView::showMainMenu() {
 }
 
 void MainView::handleSampleMenu() {
-    int choice = 0;
     while (true) {
         std::cout << "\n----- 시료 관리 -----\n";
         std::cout << "  1. 시료 등록\n";
@@ -37,20 +40,19 @@ void MainView::handleSampleMenu() {
         std::cout << "  3. 이름 검색\n";
         std::cout << "  0. 뒤로\n";
         std::cout << "선택: ";
-        std::cin >> choice;
-        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+        const int choice = readMenuChoice();
 
         if (choice == 0) break;
 
         if (choice == 1) {
             std::string id, name;
-            double avgTime, yield;
+            double avgProductionTime, yield;
             std::cout << "ID: "; std::getline(std::cin, id);
             std::cout << "이름: "; std::getline(std::cin, name);
-            std::cout << "평균 생산시간(h): "; std::cin >> avgTime;
+            std::cout << "평균 생산시간(h): "; std::cin >> avgProductionTime;
             std::cout << "수율(0.01~1.0): "; std::cin >> yield;
             std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-            if (sampleCtrl_.registerSample(id, name, avgTime, yield))
+            if (sampleCtrl_.registerSample(id, name, avgProductionTime, yield))
                 std::cout << "등록 완료.\n";
             else
                 std::cout << "등록 실패 (중복 ID 또는 수율 범위 오류).\n";
