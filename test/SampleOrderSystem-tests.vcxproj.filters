@@ -20,12 +20,18 @@
     <ClCompile Include="OrderRepositoryTest.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="SampleControllerTest.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="RepositoryTestFixture.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="DummyDataGenerator.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="MockSampleRepository.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>

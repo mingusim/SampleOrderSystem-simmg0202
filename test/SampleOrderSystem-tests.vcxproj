@@ -81,6 +81,7 @@
   <ItemGroup>
     <ClInclude Include="RepositoryTestFixture.h" />
     <ClInclude Include="DummyDataGenerator.h" />
+    <ClInclude Include="MockSampleRepository.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\packages\gmock.1.11.0\lib\native\src\gmock\src\gmock_main.cc" />
@@ -88,6 +89,7 @@
     <ClCompile Include="..\src\repository\OrderRepository.cpp" />
     <ClCompile Include="SampleRepositoryTest.cpp" />
     <ClCompile Include="OrderRepositoryTest.cpp" />
+    <ClCompile Include="SampleControllerTest.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
