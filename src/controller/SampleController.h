@@ -1,4 +1,5 @@
 #pragma once
+#include "model/Sample.h"
 #include "repository/ISampleRepository.h"
 #include <optional>
 #include <string>

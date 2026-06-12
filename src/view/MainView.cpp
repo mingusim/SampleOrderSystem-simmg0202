@@ -42,26 +42,25 @@ void MainView::handleSampleMenu() {
         std::cout << "선택: ";
         const int choice = readMenuChoice();
 
-        if (choice == 0) break;
-
-        if (choice == 1) {
-            std::string id, name;
-            double avgProductionTime, yield;
-            std::cout << "ID: "; std::getline(std::cin, id);
-            std::cout << "이름: "; std::getline(std::cin, name);
-            std::cout << "평균 생산시간(h): "; std::cin >> avgProductionTime;
-            std::cout << "수율(0.01~1.0): "; std::cin >> yield;
-            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-            if (sampleCtrl_.registerSample(id, name, avgProductionTime, yield))
-                std::cout << "등록 완료.\n";
-            else
-                std::cout << "등록 실패 (중복 ID 또는 수율 범위 오류).\n";
-        } else if (choice == 2) {
-            printSampleList(sampleCtrl_.getAllSamples());
-        } else if (choice == 3) {
-            handleSearchMenu();
-        } else {
-            std::cout << "잘못된 입력입니다.\n";
+        switch (choice) {
+            case 0: return;
+            case 1: {
+                std::string id, name;
+                double avgProductionTime, yield;
+                std::cout << "ID: "; std::getline(std::cin, id);
+                std::cout << "이름: "; std::getline(std::cin, name);
+                std::cout << "평균 생산시간(h): "; std::cin >> avgProductionTime;
+                std::cout << "수율(0.01~1.0): "; std::cin >> yield;
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                if (sampleCtrl_.registerSample(id, name, avgProductionTime, yield))
+                    std::cout << "등록 완료.\n";
+                else
+                    std::cout << "등록 실패 (중복 ID 또는 수율 범위 오류).\n";
+                break;
+            }
+            case 2: printSampleList(sampleCtrl_.getAllSamples()); break;
+            case 3: handleSearchMenu(); break;
+            default: std::cout << "잘못된 입력입니다.\n"; break;
         }
     }
 }
@@ -100,7 +99,7 @@ void MainView::printSampleList(const std::vector<Sample>& samples) {
               << std::setw(16) << "이름"
               << std::setw(14) << "생산시간(h)"
               << std::setw(8)  << "수율"
-              << std::setw(8)  << "재고\n";
+              << std::setw(8)  << "재고" << "\n";
     std::cout << std::string(56, '-') << "\n";
     for (const auto& s : samples) {
         std::cout << std::setw(10) << s.id
