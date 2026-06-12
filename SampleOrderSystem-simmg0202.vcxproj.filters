@@ -51,6 +51,9 @@
     <ClCompile Include="src\controller\SampleController.cpp">
       <Filter>소스 파일\controller</Filter>
     </ClCompile>
+    <ClCompile Include="src\controller\OrderController.cpp">
+      <Filter>소스 파일\controller</Filter>
+    </ClCompile>
     <ClCompile Include="src\view\MainView.cpp">
       <Filter>소스 파일\view</Filter>
     </ClCompile>
@@ -75,6 +78,9 @@
       <Filter>헤더 파일\repository</Filter>
     </ClInclude>
     <ClInclude Include="src\controller\SampleController.h">
+      <Filter>헤더 파일\controller</Filter>
+    </ClInclude>
+    <ClInclude Include="src\controller\OrderController.h">
       <Filter>헤더 파일\controller</Filter>
     </ClInclude>
     <ClInclude Include="src\view\MainView.h">

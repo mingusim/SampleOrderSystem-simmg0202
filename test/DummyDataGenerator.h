@@ -21,9 +21,11 @@ struct DummyDataGenerator {
         OrderStatus status = OrderStatus::RESERVED,
         std::string createdAt = "2026-06-12 00:00:00",
         std::string productionStartedAt = "",
-        int producedQuantity = 0)
+        int producedQuantity = 0,
+        int targetProductionQuantity = 0)
     {
         return Order{ id, sampleId, customerName, quantity, status,
-                      createdAt, productionStartedAt, producedQuantity };
+                      createdAt, productionStartedAt, producedQuantity,
+                      targetProductionQuantity };
     }
 };

@@ -35,7 +35,8 @@ void to_json(json& j, const Order& o) {
         {"status", statusToString(o.status)},
         {"createdAt", o.createdAt},
         {"productionStartedAt", o.productionStartedAt},
-        {"producedQuantity", o.producedQuantity}
+        {"producedQuantity", o.producedQuantity},
+        {"targetProductionQuantity", o.targetProductionQuantity}
     };
 }
 
@@ -48,6 +49,7 @@ void from_json(const json& j, Order& o) {
     j.at("createdAt").get_to(o.createdAt);
     j.at("productionStartedAt").get_to(o.productionStartedAt);
     j.at("producedQuantity").get_to(o.producedQuantity);
+    o.targetProductionQuantity = j.value("targetProductionQuantity", 0);
 }
 
 OrderRepository::OrderRepository(const std::string& filePath)

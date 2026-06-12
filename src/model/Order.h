@@ -18,4 +18,5 @@ struct Order {
     std::string createdAt;
     std::string productionStartedAt;
     int producedQuantity = 0;
+    int targetProductionQuantity = 0;
 };
