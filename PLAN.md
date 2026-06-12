@@ -170,7 +170,11 @@
 → **사용자 리뷰 후 커밋**
 
 **[REFACTOR]**
-- [ ] refactor agent 실행
+- [x] refactor agent 실행
+  - REFACTOR-1: `getActiveOrders` → `findByStatus` ×2 (findAll 제거)
+  - REFACTOR-2: `getStockStatus` O(N×M) → `unordered_map` O(1) 조회
+  - REFACTOR-3A: `getStockStatus` 파라미터 `vector<Order>` → `unordered_map<string,int>`, `Order.h` 의존 제거
+  - REFACTOR-4: `getOrderStats` switch에 `case REJECTED: break` 명시
 
 → **사용자 리뷰 후 커밋**
 

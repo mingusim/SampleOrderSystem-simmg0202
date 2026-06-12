@@ -2,6 +2,7 @@
 #include <gmock/gmock.h>
 #include "MockSampleRepository.h"
 #include "controller/SampleController.h"
+#include <unordered_map>
 
 using ::testing::Return;
 using ::testing::Field;
@@ -97,9 +98,8 @@ TEST_F(SampleControllerTest, FindById_NotFound_ReturnsNullopt) {
 TEST_F(SampleControllerTest, GetStockStatus_Surplus_WhenStockGteActiveQty) {
     Sample s{"S-001", "시료", 1.0, 0.9, 10};
     EXPECT_CALL(mockRepo_, findAll()).WillOnce(Return(std::vector<Sample>{s}));
-    Order o1{"O-001","S-001","고객A",5,OrderStatus::CONFIRMED,"","",0,0};
-    Order o2{"O-002","S-001","고객B",3,OrderStatus::PRODUCING,"","",0,0};
-    const auto result = controller_.getStockStatus({o1, o2});
+    const std::unordered_map<std::string, int> activeMap{{"S-001", 8}};  // 5+3
+    const auto result = controller_.getStockStatus(activeMap);
     ASSERT_EQ(1u, result.size());
     EXPECT_EQ(StockStatus::SURPLUS, result[0].stockStatus);
 }
@@ -108,9 +108,8 @@ TEST_F(SampleControllerTest, GetStockStatus_Surplus_WhenStockGteActiveQty) {
 TEST_F(SampleControllerTest, GetStockStatus_Shortage_WhenStockBetweenZeroAndActiveQty) {
     Sample s{"S-001", "시료", 1.0, 0.9, 3};
     EXPECT_CALL(mockRepo_, findAll()).WillOnce(Return(std::vector<Sample>{s}));
-    Order o1{"O-001","S-001","고객A",5,OrderStatus::CONFIRMED,"","",0,0};
-    Order o2{"O-002","S-001","고객B",3,OrderStatus::PRODUCING,"","",0,0};
-    const auto result = controller_.getStockStatus({o1, o2});
+    const std::unordered_map<std::string, int> activeMap{{"S-001", 8}};  // 5+3
+    const auto result = controller_.getStockStatus(activeMap);
     ASSERT_EQ(1u, result.size());
     EXPECT_EQ(StockStatus::SHORTAGE, result[0].stockStatus);
 }

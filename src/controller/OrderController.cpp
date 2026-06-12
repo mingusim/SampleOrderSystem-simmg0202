@@ -117,17 +117,22 @@ OrderStats OrderController::getOrderStats() {
             case OrderStatus::PRODUCING: stats.producing++; break;
             case OrderStatus::CONFIRMED: stats.confirmed++; break;
             case OrderStatus::RELEASE:   stats.release++;   break;
-            default: break;
+            case OrderStatus::REJECTED:  break;  // 모니터링 제외
         }
     }
     return stats;
 }
 
 std::vector<Order> OrderController::getActiveOrders() {
-    std::vector<Order> result;
-    for (const auto& o : orderRepo_.findAll()) {
-        if (o.status == OrderStatus::CONFIRMED || o.status == OrderStatus::PRODUCING)
-            result.push_back(o);
-    }
+    auto confirmed = orderRepo_.findByStatus(OrderStatus::CONFIRMED);
+    auto producing = orderRepo_.findByStatus(OrderStatus::PRODUCING);
+    confirmed.insert(confirmed.end(), producing.begin(), producing.end());
+    return confirmed;
+}
+
+std::unordered_map<std::string, int> OrderController::getActiveQtyBySample() {
+    std::unordered_map<std::string, int> result;
+    for (const auto& o : getActiveOrders())
+        result[o.sampleId] += o.quantity;
     return result;
 }

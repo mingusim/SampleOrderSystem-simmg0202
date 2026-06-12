@@ -3,6 +3,7 @@
 #include "repository/ISampleRepository.h"
 #include "repository/IOrderRepository.h"
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 class OrderController {
@@ -14,6 +15,7 @@ public:
     bool rejectOrder(const std::string& orderId);
     OrderStats getOrderStats();
     std::vector<Order> getActiveOrders();
+    std::unordered_map<std::string, int> getActiveQtyBySample();
 
 private:
     ISampleRepository& sampleRepo_;

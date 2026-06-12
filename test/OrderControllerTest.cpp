@@ -181,14 +181,10 @@ TEST_F(OrderControllerTest, GetOrderStats_NoOrders_AllZero) {
 
 // FR-030: CONFIRMED + PRODUCING 주문만 반환 (재고 상태 계산용)
 TEST_F(OrderControllerTest, GetActiveOrders_ReturnsOnlyConfirmedAndProducing) {
-    std::vector<Order> all = {
-        makeOrderWithStatus("O-001", OrderStatus::RESERVED),
-        makeOrderWithStatus("O-002", OrderStatus::CONFIRMED),
-        makeOrderWithStatus("O-003", OrderStatus::PRODUCING),
-        makeOrderWithStatus("O-004", OrderStatus::REJECTED),
-        makeOrderWithStatus("O-005", OrderStatus::RELEASE)
-    };
-    EXPECT_CALL(mockOrderRepo_, findAll()).WillOnce(Return(all));
+    EXPECT_CALL(mockOrderRepo_, findByStatus(OrderStatus::CONFIRMED))
+        .WillOnce(Return(std::vector<Order>{makeOrderWithStatus("O-002", OrderStatus::CONFIRMED)}));
+    EXPECT_CALL(mockOrderRepo_, findByStatus(OrderStatus::PRODUCING))
+        .WillOnce(Return(std::vector<Order>{makeOrderWithStatus("O-003", OrderStatus::PRODUCING)}));
     const auto result = controller_.getActiveOrders();
     ASSERT_EQ(2u, result.size());
     EXPECT_TRUE(std::any_of(result.begin(), result.end(),

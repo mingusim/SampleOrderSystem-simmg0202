@@ -184,7 +184,7 @@ void MainView::handleMonitorMenu() {
                 break;
             }
             case 2:
-                printStockStatusList(sampleCtrl_.getStockStatus(orderCtrl_.getActiveOrders()));
+                printStockStatusList(sampleCtrl_.getStockStatus(orderCtrl_.getActiveQtyBySample()));
                 break;
             default: std::cout << "잘못된 입력입니다.\n"; break;
         }
