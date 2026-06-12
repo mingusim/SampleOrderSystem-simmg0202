@@ -299,49 +299,28 @@ struct ProductionInfo {
 - `sampleCtrl_.getAllSamples().size()` — 전체 시료 수
 - `orderCtrl_.getOrderStats()` — 상태별 주문 건수 (기존 메서드 재사용)
 
-**[RED]**
-- View 단순 표시 추가, 비즈니스 로직 없음 → 단위 테스트 불필요
+> Phase 9는 View 단순 표시 추가이며 비즈니스 로직 없음 → 별도 단위 테스트 불필요 (통합 테스트로 커버)
 
-**[GREEN]**
-- [x] `showMainMenu()` — FR-003 요약 라인 추가
-- [x] 테스트 통과 확인 (54/54)
-
-→ **사용자 리뷰 후 커밋**
-
-**[REFACTOR]**
-- [x] refactor agent 실행
-  - `// FR-042` WHAT 주석 제거 (`MainView::run()`)
 
 → **사용자 리뷰 후 커밋**
 
 ---
 
-## Phase 9-BUG. FIFO 단일 생산라인 버그 수정 (FR-042)
+## Phase 10. 통합 테스트 작성 및 전체 검증
 
-### 버그 내용
+### 통합 테스트 (`test/IntegrationTest.cpp`)
 
-`updateProduction()`이 PRODUCING 상태 주문 전체를 순회해 동시에 진행시킴.
-단일 FIFO 생산라인 규칙 위반 — front 1개만 진행해야 함.
-추가로 front 완료 시 next 주문의 `productionStartedAt`이 승인 시점 그대로 남아
-실제 기계 투입 시각이 아닌 과거 시점으로 경과 시간이 계산되는 문제도 존재.
-
-**[RED]**
-- [x] `OrderControllerTest` 추가 (2개)
-  - `UpdateProduction_TwoProducing_OnlyFrontProgresses` — PRODUCING 2개 중 front만 처리, queue는 save 없음
-  - `UpdateProduction_FrontCompletes_NextStartedAtReset` — front 완료 시 next `productionStartedAt` = now로 리셋
+- [x] `RepositoryTestFixture` 상속 — 임시 디렉터리 격리, TearDown 자동 삭제
+- [x] IT-01 계열 (SampleRepositoryIT, 3개): IT-01f 이름 부분일치, IT-01g 미일치, IT-01h 재기동 영속성
+- [x] IT-02 계열 (OrderRepositoryIT, 3개): IT-02g 상태 필터, IT-02h 시료ID 필터, IT-02i 미일치
+- [x] IT-03~14 (BusinessFlowIT, 14개): 승인·생산·출고·모니터링·재고·다중주문 시나리오
+  - IT-12: FIFO 단일 생산라인 — front만 처리, queue 대기 검증 (버그 수정 반영)
+- [x] E2E-01~02 (E2EFlowIT, 2개): 재고 충분 전체 흐름 / 재고 부족 전체 흐름
+- [x] `test/SampleOrderSystem-tests.vcxproj` — IntegrationTest.cpp 빌드 대상 추가
 
 → **사용자 리뷰 후 커밋**
 
-**[FIX]**
-- [x] `updateProduction()` — `findByStatus` 전체 순회 제거, `sortedProducing().front()` 1개만 처리
-- [x] front 완료(CONFIRMED) 시 `producing[1].productionStartedAt = now` 저장
-- [x] 테스트 통과 확인 (56/56)
-
-→ **사용자 리뷰 후 커밋**
-
----
-
-## Phase 10. validator agent 전체 검증
+### validator agent 전체 검증
 
 - [ ] validator agent 실행 — 전체 FR PASS/FAIL 보고
 - [ ] FAIL 항목 수정 후 재검증
