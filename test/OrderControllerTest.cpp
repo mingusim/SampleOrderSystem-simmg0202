@@ -33,7 +33,30 @@ TEST_F(OrderControllerTest, CreateOrder_UnknownSampleId_ReturnsFalse) {
 TEST_F(OrderControllerTest, CreateOrder_ValidSample_StatusReserved) {
     Sample s{"S-001", "시료", 1.0, 0.9, 10};
     EXPECT_CALL(mockSampleRepo_, findById("S-001")).WillOnce(Return(std::optional<Sample>{s}));
+    EXPECT_CALL(mockOrderRepo_, findAll()).WillOnce(Return(std::vector<Order>{}));
     EXPECT_CALL(mockOrderRepo_, save(Field(&Order::status, OrderStatus::RESERVED))).Times(1);
+    EXPECT_TRUE(controller_.createOrder("S-001", "고객A", 5));
+}
+
+// FR-020: 기존 주문 없을 때 첫 번째 순번 ID = "O-001"
+TEST_F(OrderControllerTest, CreateOrder_NoExistingOrders_IdIsO001) {
+    Sample s{"S-001", "시료", 1.0, 0.9, 10};
+    EXPECT_CALL(mockSampleRepo_, findById("S-001")).WillOnce(Return(std::optional<Sample>{s}));
+    EXPECT_CALL(mockOrderRepo_, findAll()).WillOnce(Return(std::vector<Order>{}));
+    EXPECT_CALL(mockOrderRepo_, save(Field(&Order::id, std::string("O-001")))).Times(1);
+    EXPECT_TRUE(controller_.createOrder("S-001", "고객A", 5));
+}
+
+// FR-020: 기존 최대 순번이 O-003이면 다음 ID = "O-004"
+TEST_F(OrderControllerTest, CreateOrder_ExistingMaxO003_IdIsO004) {
+    Sample s{"S-001", "시료", 1.0, 0.9, 10};
+    std::vector<Order> existing = {
+        makeReservedOrder("O-003", "S-001", 2),
+        makeReservedOrder("O-001", "S-001", 1)
+    };
+    EXPECT_CALL(mockSampleRepo_, findById("S-001")).WillOnce(Return(std::optional<Sample>{s}));
+    EXPECT_CALL(mockOrderRepo_, findAll()).WillOnce(Return(existing));
+    EXPECT_CALL(mockOrderRepo_, save(Field(&Order::id, std::string("O-004")))).Times(1);
     EXPECT_TRUE(controller_.createOrder("S-001", "고객A", 5));
 }
 

@@ -16,4 +16,6 @@ public:
 private:
     ISampleRepository& sampleRepo_;
     IOrderRepository&  orderRepo_;
+
+    std::string generateOrderId();
 };

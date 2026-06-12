@@ -4,8 +4,19 @@
 #include <string>
 #include <limits>
 
-MainView::MainView(SampleController& sampleController)
-    : sampleCtrl_(sampleController) {}
+static std::string statusLabel(OrderStatus s) {
+    switch (s) {
+        case OrderStatus::RESERVED:  return "접수대기";
+        case OrderStatus::PRODUCING: return "생산중";
+        case OrderStatus::CONFIRMED: return "승인완료";
+        case OrderStatus::REJECTED:  return "거절";
+        case OrderStatus::RELEASE:   return "출고완료";
+        default:                     return "?";
+    }
+}
+
+MainView::MainView(SampleController& sampleController, OrderController& orderController)
+    : sampleCtrl_(sampleController), orderCtrl_(orderController) {}
 
 int MainView::readMenuChoice() {
     int choice = 0;
@@ -19,6 +30,7 @@ void MainView::run() {
         showMainMenu();
         switch (readMenuChoice()) {
             case 1: handleSampleMenu(); break;
+            case 2: handleOrderMenu();  break;
             case 0: return;
             default: std::cout << "잘못된 입력입니다.\n";
         }
@@ -28,6 +40,7 @@ void MainView::run() {
 void MainView::showMainMenu() {
     std::cout << "\n========== 시료 생산주문관리 시스템 ==========\n";
     std::cout << "  1. 시료 관리\n";
+    std::cout << "  2. 주문 관리\n";
     std::cout << "  0. 종료\n";
     std::cout << "선택: ";
 }
@@ -88,6 +101,58 @@ void MainView::handleSearchMenu() {
     }
 }
 
+void MainView::handleOrderMenu() {
+    while (true) {
+        std::cout << "\n----- 주문 관리 -----\n";
+        std::cout << "  1. 주문 접수\n";
+        std::cout << "  2. 접수 대기 목록\n";
+        std::cout << "  3. 주문 승인\n";
+        std::cout << "  4. 주문 거절\n";
+        std::cout << "  0. 뒤로\n";
+        std::cout << "선택: ";
+        const int choice = readMenuChoice();
+
+        switch (choice) {
+            case 0: return;
+            case 1: {
+                std::string sampleId, customerName;
+                int quantity;
+                std::cout << "시료 ID: "; std::getline(std::cin, sampleId);
+                std::cout << "고객명: "; std::getline(std::cin, customerName);
+                std::cout << "수량: "; std::cin >> quantity;
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                if (orderCtrl_.createOrder(sampleId, customerName, quantity))
+                    std::cout << "주문 접수 완료.\n";
+                else
+                    std::cout << "주문 실패 (미등록 시료 ID).\n";
+                break;
+            }
+            case 2:
+                printOrderList(orderCtrl_.getPendingOrders());
+                break;
+            case 3: {
+                std::string orderId;
+                std::cout << "주문 ID: "; std::getline(std::cin, orderId);
+                if (orderCtrl_.approveOrder(orderId))
+                    std::cout << "주문 승인 완료.\n";
+                else
+                    std::cout << "승인 실패 (주문 없음).\n";
+                break;
+            }
+            case 4: {
+                std::string orderId;
+                std::cout << "주문 ID: "; std::getline(std::cin, orderId);
+                if (orderCtrl_.rejectOrder(orderId))
+                    std::cout << "주문 거절 완료.\n";
+                else
+                    std::cout << "거절 실패 (주문 없음).\n";
+                break;
+            }
+            default: std::cout << "잘못된 입력입니다.\n"; break;
+        }
+    }
+}
+
 void MainView::printSampleList(const std::vector<Sample>& samples) {
     if (samples.empty()) {
         std::cout << "등록된 시료가 없습니다.\n";
@@ -107,5 +172,27 @@ void MainView::printSampleList(const std::vector<Sample>& samples) {
                   << std::setw(14) << s.avgProductionTime
                   << std::setw(8)  << s.yield
                   << std::setw(8)  << s.stock << "\n";
+    }
+}
+
+void MainView::printOrderList(const std::vector<Order>& orders) {
+    if (orders.empty()) {
+        std::cout << "주문이 없습니다.\n";
+        return;
+    }
+    std::cout << "\n"
+              << std::left
+              << std::setw(22) << "주문 ID"
+              << std::setw(10) << "시료 ID"
+              << std::setw(14) << "고객명"
+              << std::setw(8)  << "수량"
+              << std::setw(10) << "상태" << "\n";
+    std::cout << std::string(64, '-') << "\n";
+    for (const auto& o : orders) {
+        std::cout << std::setw(22) << o.id
+                  << std::setw(10) << o.sampleId
+                  << std::setw(14) << o.customerName
+                  << std::setw(8)  << o.quantity
+                  << std::setw(10) << statusLabel(o.status) << "\n";
     }
 }
