@@ -87,6 +87,7 @@
     <ClCompile Include="..\packages\gmock.1.11.0\lib\native\src\gmock\src\gmock_main.cc" />
     <ClCompile Include="..\src\repository\SampleRepository.cpp" />
     <ClCompile Include="..\src\repository\OrderRepository.cpp" />
+    <ClCompile Include="..\src\controller\SampleController.cpp" />
     <ClCompile Include="SampleRepositoryTest.cpp" />
     <ClCompile Include="OrderRepositoryTest.cpp" />
     <ClCompile Include="SampleControllerTest.cpp" />

@@ -156,11 +156,15 @@
     <ClInclude Include="src\repository\IOrderRepository.h" />
     <ClInclude Include="src\repository\SampleRepository.h" />
     <ClInclude Include="src\repository\OrderRepository.h" />
+    <ClInclude Include="src\controller\SampleController.h" />
+    <ClInclude Include="src\view\MainView.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\repository\SampleRepository.cpp" />
     <ClCompile Include="src\repository\OrderRepository.cpp" />
+    <ClCompile Include="src\controller\SampleController.cpp" />
+    <ClCompile Include="src\view\MainView.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

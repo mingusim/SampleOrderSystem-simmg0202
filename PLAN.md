@@ -78,24 +78,24 @@
 ## Phase 4. 시료 관리 (FR-010~012)
 
 **[RED]**
-- [ ] `MockSampleRepository` (gmock) 작성
-- [ ] `SampleController` 단위 테스트 작성
+- [x] `MockSampleRepository` (gmock) 작성
+- [x] `SampleController` 단위 테스트 작성
   - FR-010: ID 중복 시 등록 거부
   - FR-010: 수율 범위 초과(< 0.01 또는 > 1.0) 시 등록 거부
   - FR-010: 정상 등록 → save 1회 호출, stock 초기값 0
   - FR-011: findAll 결과 반환 확인
   - FR-012: 이름 부분 일치 검색 결과 확인
-- [ ] 빌드·실행 → 테스트 실패 확인
+- [x] 빌드·실행 → 테스트 실패 확인
 
 → **사용자 리뷰 후 커밋**
 
 **[GREEN]**
-- [ ] `SampleController(ISampleRepository&)` 구현
+- [x] `SampleController(ISampleRepository&)` 구현
   - FR-010: 시료 등록 (ID 중복 불가, stock 초기값 0, 수율 범위 검증 0.01~1.0)
   - FR-011: 전체 목록 조회
   - FR-012: 이름 부분 일치 검색
-- [ ] `MainView` — 시료 관리 서브메뉴 UI
-- [ ] 테스트 통과 확인
+- [x] `MainView` — 시료 관리 서브메뉴 UI
+- [x] 테스트 통과 확인
 
 → **사용자 리뷰 후 커밋**
 
