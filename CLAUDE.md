@@ -128,10 +128,10 @@ RESERVED ──(승인, 재고 충분)──▶ CONFIRMED ──(출고)──�
 
 ## 테스트 방침
 
+- 테스트 프레임워크: Google Mock (gmock 1.11.0, NuGet 패키지)
 - 단위 테스트: Controller 레이어 로직 검증
 - 통합 테스트: Repository → JSON 파일 왕복 검증
 - 테스트 데이터: DummyDataGenerator 활용
-- 테스트 프레임워크: 별도 지정 없으면 직접 assert 또는 간단한 main 기반 테스트
 
 ---
 
@@ -140,6 +140,15 @@ RESERVED ──(승인, 재고 충분)──▶ CONFIRMED ──(출고)──�
 - 기능 구현 전 PRD.md 요구사항 재확인
 - 각 기능 완료 후 빌드 → 실행 확인
 - 커밋은 사용자가 직접 수행 (커밋 컨벤션: `GIT_CONVENTION.md` 참고)
+
+---
+
+## 제출 기준
+
+- Repository 이름: `SampleOrderSystem-simmg0202`
+- Public 저장소
+- CLAUDE.md, PRD.md 포함
+- 커밋 이력 유지 (squash 금지)
 
 ---
 

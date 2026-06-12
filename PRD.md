@@ -29,8 +29,6 @@
 
 ## 기능 요구사항
 
----
-
 ### 1. 메인 메뉴
 
 **FR-001** 시스템 시작 시 메인 메뉴를 표시한다.
@@ -50,7 +48,7 @@
 ### 2. 시료 관리
 
 **FR-010** 시료(Sample)를 시스템에 등록한다.
-- 입력 값: 시료 ID, 이름, 평균 생산시간(h/개), 수율(0.0~1.0)
+- 입력 값: 시료 ID, 이름, 평균 생산시간(h/개), 수율(0.01~1.0)
 - ID 중복 등록 불가
 
 **FR-011** 등록된 전체 시료 목록을 조회한다.
@@ -65,14 +63,10 @@
 
 ### 3. 주문
 
-#### 3-1. 시료 예약 (RESERVED)
-
 **FR-020** 고객이 시료를 요청하면 주문을 생성한다.
 - 입력 값: 시료 ID, 고객명, 주문 수량
 - 등록되지 않은 시료 ID는 거부
 - 생성 즉시 상태: RESERVED
-
-#### 3-2. 주문 승인
 
 **FR-021** RESERVED 주문 목록을 표시한다.
 
@@ -82,13 +76,11 @@
 
 **FR-023** 생산량 계산식
 ```
-가용 재고 = stock - (CONFIRMED + PRODUCING 주문 수량 합계)
+가용 재고 = stock - (해당 시료의 CONFIRMED + PRODUCING 주문 수량 합계)
 부족분    = quantity - max(0, 가용 재고)
 실 생산량 = ceil(부족분 / (수율 × 0.9))
 총 생산시간 = 평균생산시간 × 실 생산량
 ```
-
-#### 3-3. 주문 거절
 
 **FR-024** 특정 RESERVED 주문을 거절한다. 즉시 REJECTED 전환.
 
@@ -106,8 +98,8 @@
 
 | 상태 표기 | 조건 |
 |----------|------|
-| 여유 | stock >= (CONFIRMED + PRODUCING 주문 수량 합계) |
-| 부족 | 0 < stock < (CONFIRMED + PRODUCING 주문 수량 합계) |
+| 여유 | stock >= (해당 시료의 CONFIRMED + PRODUCING 주문 수량 합계) |
+| 부족 | 0 < stock < (해당 시료의 CONFIRMED + PRODUCING 주문 수량 합계) |
 | 고갈 | stock == 0 |
 
 ---
@@ -120,8 +112,11 @@
 **FR-041** 생산 대기 큐를 표시한다.
 - 스케줄링 전략: **FIFO**
 
-**FR-042** 메뉴 진입 시 경과 시간을 체크하여 생산 상태를 갱신한다.
-- 경과 시간 기준으로 생산된 수량만큼 즉시 재고 증가 (실시간 반영)
+**FR-042** 모든 메뉴 진입 시 경과 시간을 체크하여 생산 상태를 갱신한다.
+- productionStartedAt 기준으로 경과 시간 계산
+- 총 생산량 = floor(경과시간 / avgProductionTime), 단 실 생산량 초과 불가
+- delta = 총 생산량 - producedQuantity
+- delta > 0이면 재고 += delta, producedQuantity += delta
 - 총 생산시간 경과 시 자동으로 PRODUCING → CONFIRMED 전환
 
 ---
@@ -145,7 +140,7 @@
 | id | string | 고유 식별자 |
 | name | string | 시료 이름 |
 | avgProductionTime | double | 개당 평균 생산시간(h) |
-| yield | double | 수율 (0.0~1.0) |
+| yield | double | 수율 (0.01~1.0) |
 | stock | int | 현재 재고 수량 (초기값: 0) |
 
 ### Order
@@ -158,6 +153,8 @@
 | quantity | int | 주문 수량 |
 | status | enum | RESERVED / REJECTED / PRODUCING / CONFIRMED / RELEASE |
 | createdAt | string | 주문 접수 일시 (YYYY-MM-DD HH:MM:SS) |
+| productionStartedAt | string | 생산 시작 일시 (YYYY-MM-DD HH:MM:SS, PRODUCING 전환 시 기록) |
+| producedQuantity | int | 재고에 반영된 누적 생산 수량 (초기값: 0, 메뉴 진입마다 delta만큼 갱신) |
 
 ---
 
@@ -169,32 +166,6 @@
 | 언어 | C++20 |
 | 빌드 | MSBuild (Visual Studio .vcxproj) |
 | 인코딩 | UTF-8 소스 (/utf-8), 콘솔 UTF-8 출력 |
-| 모델 | Sonnet / Effort: Medium (Opus 사용 금지) |
+| 테스트 | Google Mock (gmock 1.11.0) |
 | 코드 품질 | MVC 레이어 분리, CleanCode 준수 |
 | 이력 | 기능 단위 Git 커밋 |
-
----
-
-## 구현 우선순위
-
-| 순서 | 기능 | 관련 FR |
-|------|------|---------|
-| 1 | 프로젝트 골격 (CMake, 디렉토리) | - |
-| 2 | Model 정의 | - |
-| 3 | Repository (JSON CRUD) | - |
-| 4 | 시료 관리 | FR-010~012 |
-| 5 | 주문 접수·승인·거절 | FR-020~024 |
-| 6 | 모니터링 | FR-030~032 |
-| 7 | 생산라인 | FR-040~042 |
-| 8 | 출고 처리 | FR-050~051 |
-| 9 | 메인 메뉴 요약 | FR-003 |
-| 10 | 테스트 작성 | - |
-
----
-
-## 제출 기준
-
-- Repository 이름: `SampleOrderSystem-simmg0202`
-- Public 저장소
-- CLAUDE.md, PRD.md 포함
-- 커밋 이력 유지 (squash 금지)
