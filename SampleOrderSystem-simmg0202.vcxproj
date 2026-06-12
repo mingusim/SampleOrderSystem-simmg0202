@@ -148,6 +148,8 @@
   <ItemGroup>
     <ClInclude Include="src\model\Sample.h" />
     <ClInclude Include="src\model\Order.h" />
+    <ClInclude Include="src\repository\ISampleRepository.h" />
+    <ClInclude Include="src\repository\IOrderRepository.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\main.cpp" />
