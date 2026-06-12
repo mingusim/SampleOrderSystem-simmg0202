@@ -50,21 +50,21 @@
 ## Phase 3. Repository 인터페이스 + JSON 구현
 
 **[RED]**
-- [ ] `ISampleRepository` 추상 인터페이스 정의 (findById, findAll, save, remove)
-- [ ] `IOrderRepository` 추상 인터페이스 정의
-- [ ] `test/RepositoryTestFixture.h` 작성 — 임시 `data/` 경로 설정, TearDown 시 파일 삭제
-- [ ] Repository 통합 테스트 작성 (RepositoryTestFixture 상속, 왕복 검증)
+- [x] `ISampleRepository` 추상 인터페이스 정의 (findById, findAll, save, remove)
+- [x] `IOrderRepository` 추상 인터페이스 정의
+- [x] `test/RepositoryTestFixture.h` 작성 — 임시 `data/` 경로 설정, TearDown 시 파일 삭제
+- [x] Repository 통합 테스트 작성 (RepositoryTestFixture 상속, 왕복 검증)
   - save → findAll → 값 일치 확인
   - save → findById → 값 일치 확인
   - remove → findAll → 없음 확인
-- [ ] 빌드·실행 → 테스트 실패 확인
+- [x] 빌드·실행 → 테스트 실패 확인
 
 → **사용자 리뷰 후 커밋**
 
 **[GREEN]**
-- [ ] `SampleRepository : ISampleRepository` 구현 (samples.json CRUD)
-- [ ] `OrderRepository : IOrderRepository` 구현 (orders.json CRUD)
-- [ ] 테스트 통과 확인
+- [x] `SampleRepository : ISampleRepository` 구현 (samples.json CRUD)
+- [x] `OrderRepository : IOrderRepository` 구현 (orders.json CRUD)
+- [x] 테스트 통과 확인
 
 → **사용자 리뷰 후 커밋**
 
