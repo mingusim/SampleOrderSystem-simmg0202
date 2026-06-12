@@ -301,8 +301,8 @@ struct ProductionInfo {
 
 > Phase 9는 View 단순 표시 추가이며 비즈니스 로직 없음 → 별도 단위 테스트 불필요 (통합 테스트로 커버)
 
-- [ ] `showMainMenu()` — FR-003 요약 라인 추가
-- [ ] 전체 메뉴 흐름 통합 확인
+- [x] `showMainMenu()` — FR-003 요약 라인 추가
+- [x] 전체 메뉴 흐름 통합 확인
 
 → **사용자 리뷰 후 커밋**
 

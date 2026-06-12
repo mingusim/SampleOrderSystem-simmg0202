@@ -43,7 +43,15 @@ void MainView::run() {
 }
 
 void MainView::showMainMenu() {
+    const OrderStats stats = orderCtrl_.getOrderStats();
+    const int sampleCount = static_cast<int>(sampleCtrl_.getAllSamples().size());
+
     std::cout << "\n========== 시료 생산주문관리 시스템 ==========\n";
+    std::cout << "[요약] 시료: " << sampleCount << "종"
+              << "  |  접수대기: " << stats.reserved
+              << "  생산중: "     << stats.producing
+              << "  승인완료: "   << stats.confirmed
+              << "  출고완료: "   << stats.release << "\n";
     std::cout << "  1. 시료 관리\n";
     std::cout << "  2. 주문 관리\n";
     std::cout << "  3. 모니터링\n";
