@@ -133,24 +133,37 @@ std::unordered_map<std::string, int> OrderController::getActiveQtyBySample() {
 }
 
 void OrderController::updateProduction(const std::string& now) {
-    for (auto order : orderRepo_.findByStatus(OrderStatus::PRODUCING)) {
-        auto optSample = sampleRepo_.findById(order.sampleId);
-        if (!optSample) continue;
-        Sample sample = *optSample;
+    auto producing = sortedProducing(orderRepo_.findByStatus(OrderStatus::PRODUCING));
+    if (producing.empty()) return;
 
-        const double elapsed = TimeUtils::elapsedHours(order.productionStartedAt, now);
-        const int cumulative = static_cast<int>(std::ceil(elapsed / sample.avgProductionTime));
-        const int totalProduced = std::min(cumulative, order.targetProductionQuantity);
-        const int delta = totalProduced - order.producedQuantity;
+    // FIFO 단일 생산라인: 가장 먼저 시작된 주문만 처리
+    Order order = producing.front();
+    auto optSample = sampleRepo_.findById(order.sampleId);
+    if (!optSample) return;
+    Sample sample = *optSample;
 
-        if (delta <= 0) continue;
+    const double elapsed = TimeUtils::elapsedHours(order.productionStartedAt, now);
+    const int cumulative = static_cast<int>(std::ceil(elapsed / sample.avgProductionTime));
+    const int totalProduced = std::min(cumulative, order.targetProductionQuantity);
+    const int delta = totalProduced - order.producedQuantity;
 
-        order.producedQuantity += delta;
-        sample.stock += delta;
+    if (delta <= 0) return;
 
-        if (order.producedQuantity >= order.targetProductionQuantity)
-            order.status = OrderStatus::CONFIRMED;
+    order.producedQuantity += delta;
+    sample.stock += delta;
 
+    if (order.producedQuantity >= order.targetProductionQuantity) {
+        order.status = OrderStatus::CONFIRMED;
+        orderRepo_.save(order);
+        sampleRepo_.save(sample);
+
+        // 다음 대기 주문이 있으면 실제 생산 시작 시각으로 갱신
+        if (producing.size() > 1) {
+            Order next = producing[1];
+            next.productionStartedAt = now;
+            orderRepo_.save(next);
+        }
+    } else {
         orderRepo_.save(order);
         sampleRepo_.save(sample);
     }
