@@ -111,29 +111,30 @@
 ## Phase 5. 주문 접수·승인·거절 (FR-020~024)
 
 **[RED]**
-- [ ] `MockOrderRepository` (gmock) 작성 (MockSampleRepository는 Phase 4 재사용)
-- [ ] `OrderController` 단위 테스트 작성
+- [x] `MockOrderRepository` (gmock) 작성 (MockSampleRepository는 Phase 4 재사용)
+- [x] `OrderController` 단위 테스트 작성 (13개)
   - FR-020: 미등록 시료 ID로 주문 시 거부
   - FR-020: 정상 주문 생성 → 상태 RESERVED, save 1회 호출
+  - FR-020: 순번 ID — 첫 주문 O-001, 기존 최대 O-003 시 O-004
   - FR-021: RESERVED 주문 목록 반환 확인
   - FR-022: 가용 재고 >= quantity → CONFIRMED 전환
-  - FR-022: 가용 재고 < quantity → PRODUCING 전환 (재고 즉시 차감 없음)
+  - FR-022: 가용 재고 < quantity → PRODUCING 전환
   - FR-023: 생산량 계산식 검증 (정상 / 가용 재고 음수 / 재고 0 케이스)
   - FR-024: RESERVED → REJECTED 전환
-- [ ] 빌드·실행 → 테스트 실패 확인
+- [x] 빌드·실행 → 테스트 실패 확인
 
 → **사용자 리뷰 후 커밋**
 
 **[GREEN]**
-- [ ] `OrderController(ISampleRepository&, IOrderRepository&)` 구현
-  - FR-020~024 구현
-- [ ] `MainView` — 주문 서브메뉴 UI
-- [ ] 테스트 통과 확인
+- [x] `OrderController(ISampleRepository&, IOrderRepository&)` 구현
+  - FR-020~024 구현, generateOrderId() 순번 기반
+- [x] `MainView` — 주문 서브메뉴 UI
+- [x] 테스트 통과 확인 (13개)
 
 → **사용자 리뷰 후 커밋**
 
 **[REFACTOR]**
-- [ ] refactor agent 실행
+- [x] refactor agent 실행
 
 → **사용자 리뷰 후 커밋**
 
@@ -142,16 +143,27 @@
 ## Phase 6. 모니터링 (FR-030~032)
 
 **[RED]**
-- [ ] 모니터링 단위 테스트 작성
-  - FR-030: 상태별 주문 건수 집계 (REJECTED 제외 확인)
-  - FR-032: 재고 상태 판정 로직 — 여유 / 부족 / 고갈 경계값 확인
+- [x] `model/Order.h` — `OrderStats` 구조체 추가
+- [x] `model/Sample.h` — `StockStatus` enum, `SampleStockInfo` 구조체 추가
+- [x] `OrderController` 신규 메서드 선언: `getOrderStats()`, `getActiveOrders()`
+- [x] `SampleController` 신규 메서드 선언: `getStockStatus(activeOrders)`
+- [x] `OrderControllerTest` 모니터링 테스트 추가 (3개)
+  - FR-030: 상태별 주문 건수 집계, REJECTED 제외 확인
+  - FR-030: 주문 없을 때 모든 카운트 0
+  - FR-030: getActiveOrders — CONFIRMED + PRODUCING만 반환
+- [x] `SampleControllerTest` 재고 상태 테스트 추가 (4개)
+  - FR-032: stock >= activeQty → SURPLUS
+  - FR-032: 0 < stock < activeQty → SHORTAGE
+  - FR-032: stock == 0 → DEPLETED
+  - FR-032: activeOrders 없고 stock > 0 → SURPLUS
 - [ ] 빌드·실행 → 테스트 실패 확인
 
 → **사용자 리뷰 후 커밋**
 
 **[GREEN]**
-- [ ] `OrderController` 모니터링 메서드 추가 (FR-030)
-- [ ] `SampleController` 모니터링 메서드 추가 (FR-031, FR-032)
+- [ ] `OrderController::getOrderStats()` 구현
+- [ ] `OrderController::getActiveOrders()` 구현
+- [ ] `SampleController::getStockStatus()` 구현
 - [ ] `MainView` — 모니터링 서브메뉴 UI
 - [ ] 테스트 통과 확인
 

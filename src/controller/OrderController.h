@@ -12,6 +12,8 @@ public:
     std::vector<Order> getPendingOrders();
     bool approveOrder(const std::string& orderId);
     bool rejectOrder(const std::string& orderId);
+    OrderStats getOrderStats();
+    std::vector<Order> getActiveOrders();
 
 private:
     ISampleRepository& sampleRepo_;

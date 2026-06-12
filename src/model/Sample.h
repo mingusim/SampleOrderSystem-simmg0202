@@ -8,3 +8,10 @@ struct Sample {
     double yield;
     int stock = 0;
 };
+
+enum class StockStatus { SURPLUS, SHORTAGE, DEPLETED };
+
+struct SampleStockInfo {
+    Sample sample;
+    StockStatus stockStatus;
+};

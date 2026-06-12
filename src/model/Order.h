@@ -20,3 +20,10 @@ struct Order {
     int producedQuantity = 0;
     int targetProductionQuantity = 0;
 };
+
+struct OrderStats {
+    int reserved  = 0;
+    int producing = 0;
+    int confirmed = 0;
+    int release   = 0;
+};

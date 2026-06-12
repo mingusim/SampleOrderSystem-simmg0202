@@ -4,10 +4,17 @@
 #include "MockOrderRepository.h"
 #include "DummyDataGenerator.h"
 #include "controller/OrderController.h"
+#include <algorithm>
 
 using ::testing::Return;
 using ::testing::Field;
 using ::testing::_;
+
+namespace {
+    Order makeOrderWithStatus(const std::string& id, OrderStatus status) {
+        return DummyDataGenerator::makeOrder(id, "S-001", "테스트고객", 5, status);
+    }
+}
 
 class OrderControllerTest : public ::testing::Test {
 protected:
@@ -143,3 +150,49 @@ TEST_F(OrderControllerTest, RejectOrder_StatusBecomesRejected) {
     EXPECT_TRUE(controller_.rejectOrder("O-001"));
 }
 
+// FR-030: 상태별 주문 건수 집계 — REJECTED 제외 확인
+TEST_F(OrderControllerTest, GetOrderStats_VariousStatuses_CountsExcludeRejected) {
+    std::vector<Order> all = {
+        makeOrderWithStatus("O-001", OrderStatus::RESERVED),
+        makeOrderWithStatus("O-002", OrderStatus::RESERVED),
+        makeOrderWithStatus("O-003", OrderStatus::PRODUCING),
+        makeOrderWithStatus("O-004", OrderStatus::CONFIRMED),
+        makeOrderWithStatus("O-005", OrderStatus::RELEASE),
+        makeOrderWithStatus("O-006", OrderStatus::REJECTED),
+        makeOrderWithStatus("O-007", OrderStatus::REJECTED)
+    };
+    EXPECT_CALL(mockOrderRepo_, findAll()).WillOnce(Return(all));
+    const OrderStats stats = controller_.getOrderStats();
+    EXPECT_EQ(2, stats.reserved);
+    EXPECT_EQ(1, stats.producing);
+    EXPECT_EQ(1, stats.confirmed);
+    EXPECT_EQ(1, stats.release);
+}
+
+// FR-030: 주문 없을 때 모든 카운트 0
+TEST_F(OrderControllerTest, GetOrderStats_NoOrders_AllZero) {
+    EXPECT_CALL(mockOrderRepo_, findAll()).WillOnce(Return(std::vector<Order>{}));
+    const OrderStats stats = controller_.getOrderStats();
+    EXPECT_EQ(0, stats.reserved);
+    EXPECT_EQ(0, stats.producing);
+    EXPECT_EQ(0, stats.confirmed);
+    EXPECT_EQ(0, stats.release);
+}
+
+// FR-030: CONFIRMED + PRODUCING 주문만 반환 (재고 상태 계산용)
+TEST_F(OrderControllerTest, GetActiveOrders_ReturnsOnlyConfirmedAndProducing) {
+    std::vector<Order> all = {
+        makeOrderWithStatus("O-001", OrderStatus::RESERVED),
+        makeOrderWithStatus("O-002", OrderStatus::CONFIRMED),
+        makeOrderWithStatus("O-003", OrderStatus::PRODUCING),
+        makeOrderWithStatus("O-004", OrderStatus::REJECTED),
+        makeOrderWithStatus("O-005", OrderStatus::RELEASE)
+    };
+    EXPECT_CALL(mockOrderRepo_, findAll()).WillOnce(Return(all));
+    const auto result = controller_.getActiveOrders();
+    ASSERT_EQ(2u, result.size());
+    EXPECT_TRUE(std::any_of(result.begin(), result.end(),
+        [](const Order& o){ return o.status == OrderStatus::CONFIRMED; }));
+    EXPECT_TRUE(std::any_of(result.begin(), result.end(),
+        [](const Order& o){ return o.status == OrderStatus::PRODUCING; }));
+}

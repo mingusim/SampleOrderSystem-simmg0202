@@ -92,3 +92,43 @@ TEST_F(SampleControllerTest, FindById_NotFound_ReturnsNullopt) {
     auto result = controller_.findById("S-999");
     EXPECT_FALSE(result.has_value());
 }
+
+// FR-032: stock >= CONFIRMED+PRODUCING 수량 합계 → SURPLUS
+TEST_F(SampleControllerTest, GetStockStatus_Surplus_WhenStockGteActiveQty) {
+    Sample s{"S-001", "시료", 1.0, 0.9, 10};
+    EXPECT_CALL(mockRepo_, findAll()).WillOnce(Return(std::vector<Sample>{s}));
+    Order o1{"O-001","S-001","고객A",5,OrderStatus::CONFIRMED,"","",0,0};
+    Order o2{"O-002","S-001","고객B",3,OrderStatus::PRODUCING,"","",0,0};
+    const auto result = controller_.getStockStatus({o1, o2});
+    ASSERT_EQ(1u, result.size());
+    EXPECT_EQ(StockStatus::SURPLUS, result[0].stockStatus);
+}
+
+// FR-032: 0 < stock < CONFIRMED+PRODUCING 수량 합계 → SHORTAGE
+TEST_F(SampleControllerTest, GetStockStatus_Shortage_WhenStockBetweenZeroAndActiveQty) {
+    Sample s{"S-001", "시료", 1.0, 0.9, 3};
+    EXPECT_CALL(mockRepo_, findAll()).WillOnce(Return(std::vector<Sample>{s}));
+    Order o1{"O-001","S-001","고객A",5,OrderStatus::CONFIRMED,"","",0,0};
+    Order o2{"O-002","S-001","고객B",3,OrderStatus::PRODUCING,"","",0,0};
+    const auto result = controller_.getStockStatus({o1, o2});
+    ASSERT_EQ(1u, result.size());
+    EXPECT_EQ(StockStatus::SHORTAGE, result[0].stockStatus);
+}
+
+// FR-032: stock == 0 → DEPLETED
+TEST_F(SampleControllerTest, GetStockStatus_Depleted_WhenStockIsZero) {
+    Sample s{"S-001", "시료", 1.0, 0.9, 0};
+    EXPECT_CALL(mockRepo_, findAll()).WillOnce(Return(std::vector<Sample>{s}));
+    const auto result = controller_.getStockStatus({});
+    ASSERT_EQ(1u, result.size());
+    EXPECT_EQ(StockStatus::DEPLETED, result[0].stockStatus);
+}
+
+// FR-032: 활성 주문 없을 때 재고 있으면 → SURPLUS
+TEST_F(SampleControllerTest, GetStockStatus_Surplus_WhenNoActiveOrders) {
+    Sample s{"S-001", "시료", 1.0, 0.9, 5};
+    EXPECT_CALL(mockRepo_, findAll()).WillOnce(Return(std::vector<Sample>{s}));
+    const auto result = controller_.getStockStatus({});
+    ASSERT_EQ(1u, result.size());
+    EXPECT_EQ(StockStatus::SURPLUS, result[0].stockStatus);
+}
